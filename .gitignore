@@ -7,6 +7,32 @@
 .buildlog/
 .history
 
+# C/C++ build artifacts
+**/build-*/
+**/cmake-build-*/
+**/CMakeFiles/
+**/CMakeCache.txt
+**/Makefile
+**/*.o
+**/*.obj
+**/*.lo
+**/*.la
+**/*.a
+**/*.so
+**/*.dylib
+**/*.dll
+**/*.exe
+**/*.out
+**/*.app
+**/*.pdb
+**/*.ilk
+**/*.pch
+**/*.gcno
+**/*.gcda
+**/*.gcov
+**/*.dSYM/
+**/.vs/
+**/.vscode/
 
 
 # Flutter repo-specific
@@ -106,6 +132,9 @@ unlinked_spec.ds
 
 # Coverage
 coverage/
+
+# JetBrains/IDE
+.idea/
 
 # Symbols
 app.*.symbols
