@@ -19,6 +19,28 @@ enum class Status {
   kInvalidArguments = 3,
 };
 
+enum class PlaybackState {
+  kIdle = 0,
+  kInitialized,
+  kReady,
+  kPlaying,
+  kPaused,
+  kStopped,
+};
+
+struct StateEvent {
+  PlaybackState state;
+  Status status;
+};
+
+struct PcmFrame {
+  const float* data = nullptr;
+  int num_frames = 0;
+  int num_channels = 0;
+  int sample_rate = 0;
+  int64_t timestamp_ms = 0;  // presentation time.
+};
+
 // Minimal audio engine interface (stub for TDD).
 class AudioEngine {
  public:
@@ -30,6 +52,11 @@ class AudioEngine {
   virtual Status Pause() = 0;
   virtual Status Stop() = 0;
   virtual Status Seek(int64_t position_ms) = 0;
+
+  // Event callbacks (will be invoked from internal threads; caller ensures thread-safety).
+  virtual void SetStateCallback(void (*callback)(const StateEvent&, void*), void* user_data) = 0;
+  virtual void SetPcmCallback(void (*callback)(const PcmFrame&, void*), void* user_data) = 0;
+  virtual void SetPositionCallback(void (*callback)(int64_t position_ms, void*), void* user_data) = 0;
 };
 
 // Factory for the stub implementation used in bootstrap/testing.

@@ -22,4 +22,23 @@ TEST_F(AudioEngineTest, LifecycleDoesNotCrash) {
   EXPECT_EQ(engine_->Stop(), Status::kOk);
 }
 
+TEST_F(AudioEngineTest, CallbacksCanBeSet) {
+  ASSERT_NE(engine_, nullptr);
+  bool state_called = false;
+  bool pcm_called = false;
+  bool pos_called = false;
+
+  engine_->SetStateCallback(
+      [](const StateEvent&, void* ud) { *static_cast<bool*>(ud) = true; }, &state_called);
+  engine_->SetPcmCallback(
+      [](const PcmFrame&, void* ud) { *static_cast<bool*>(ud) = true; }, &pcm_called);
+  engine_->SetPositionCallback(
+      [](int64_t, void* ud) { *static_cast<bool*>(ud) = true; }, &pos_called);
+
+  // Callbacks are not invoked in stub, but setting them should not crash.
+  EXPECT_FALSE(state_called);
+  EXPECT_FALSE(pcm_called);
+  EXPECT_FALSE(pos_called);
+}
+
 }  // namespace sw
