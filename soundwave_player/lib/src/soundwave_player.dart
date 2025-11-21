@@ -6,10 +6,14 @@ import 'soundwave_exception.dart';
 /// Platform-agnostic API for the SoundWave plugin.
 class SoundwavePlayer {
   SoundwavePlayer({BinaryMessenger? messenger})
-      : _methodChannel = MethodChannel(_methodChannelName, const StandardMethodCodec(), messenger),
-        _stateChannel = EventChannel('$_eventPrefix/state', const StandardMethodCodec(), messenger),
-        _pcmChannel = EventChannel('$_eventPrefix/pcm', const StandardMethodCodec(), messenger),
-        _spectrumChannel = EventChannel('$_eventPrefix/spectrum', const StandardMethodCodec(), messenger);
+      : _methodChannel = MethodChannel(
+            _methodChannelName, const StandardMethodCodec(), messenger),
+        _stateChannel = EventChannel(
+            '$_eventPrefix/state', const StandardMethodCodec(), messenger),
+        _pcmChannel = EventChannel(
+            '$_eventPrefix/pcm', const StandardMethodCodec(), messenger),
+        _spectrumChannel = EventChannel(
+            '$_eventPrefix/spectrum', const StandardMethodCodec(), messenger);
 
   static const String _methodChannelName = 'soundwave_player';
   static const String _eventPrefix = 'soundwave_player/events';
@@ -22,7 +26,8 @@ class SoundwavePlayer {
 
   Stream<dynamic> get stateEvents => _stateChannel.receiveBroadcastStream();
   Stream<dynamic> get pcmEvents => _pcmChannel.receiveBroadcastStream();
-  Stream<dynamic> get spectrumEvents => _spectrumChannel.receiveBroadcastStream();
+  Stream<dynamic> get spectrumEvents =>
+      _spectrumChannel.receiveBroadcastStream();
 
   Future<void> init(SoundwaveConfig config) async {
     if (_initialized) {
@@ -64,10 +69,12 @@ class SoundwavePlayer {
     if (position.isNegative) {
       throw ArgumentError.value(position, 'position', 'must be >= 0');
     }
-    await _invoke<void>('seek', <String, Object?>{'positionMs': position.inMilliseconds});
+    await _invoke<void>(
+        'seek', <String, Object?>{'positionMs': position.inMilliseconds});
   }
 
-  Future<T?> _invoke<T>(String method, [Map<String, Object?>? arguments]) async {
+  Future<T?> _invoke<T>(String method,
+      [Map<String, Object?>? arguments]) async {
     try {
       return await _methodChannel.invokeMethod<T>(method, arguments);
     } on PlatformException catch (e) {

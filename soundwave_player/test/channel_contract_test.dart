@@ -15,7 +15,8 @@ void main() {
           .setMockMethodCallHandler(channel, (MethodCall call) async {
         calls.add(call);
         if (call.method == 'play') {
-          throw PlatformException(code: 'native_error', message: 'boom', details: {'code': 500});
+          throw PlatformException(
+              code: 'native_error', message: 'boom', details: {'code': 500});
         }
         return null;
       });
@@ -28,29 +29,37 @@ void main() {
 
     test('init validates config and forwards to platform', () async {
       final player = SoundwavePlayer();
-      await player.init(const SoundwaveConfig(sampleRate: 48000, bufferSize: 2048, channels: 2));
+      await player.init(const SoundwaveConfig(
+          sampleRate: 48000, bufferSize: 2048, channels: 2));
 
       expect(calls, hasLength(1));
       final call = calls.first;
       expect(call.method, 'init');
       expect(
         call.arguments,
-        <String, Object?>{'sampleRate': 48000, 'bufferSize': 2048, 'channels': 2},
+        <String, Object?>{
+          'sampleRate': 48000,
+          'bufferSize': 2048,
+          'channels': 2
+        },
       );
     });
 
     test('init twice throws', () async {
       final player = SoundwavePlayer();
-      await player.init(const SoundwaveConfig(sampleRate: 48000, bufferSize: 2048, channels: 2));
+      await player.init(const SoundwaveConfig(
+          sampleRate: 48000, bufferSize: 2048, channels: 2));
       expect(
-        () => player.init(const SoundwaveConfig(sampleRate: 48000, bufferSize: 2048, channels: 2)),
+        () => player.init(const SoundwaveConfig(
+            sampleRate: 48000, bufferSize: 2048, channels: 2)),
         throwsStateError,
       );
     });
 
     test('load rejects empty source', () async {
       final player = SoundwavePlayer();
-      await player.init(const SoundwaveConfig(sampleRate: 48000, bufferSize: 2048, channels: 2));
+      await player.init(const SoundwaveConfig(
+          sampleRate: 48000, bufferSize: 2048, channels: 2));
       expect(() => player.load(' '), throwsArgumentError);
     });
 
@@ -61,8 +70,10 @@ void main() {
 
     test('seek rejects negative position', () async {
       final player = SoundwavePlayer();
-      await player.init(const SoundwaveConfig(sampleRate: 48000, bufferSize: 2048, channels: 2));
-      expect(() => player.seek(const Duration(milliseconds: -1)), throwsArgumentError);
+      await player.init(const SoundwaveConfig(
+          sampleRate: 48000, bufferSize: 2048, channels: 2));
+      expect(() => player.seek(const Duration(milliseconds: -1)),
+          throwsArgumentError);
     });
 
     test('play before init throws', () async {
@@ -72,7 +83,8 @@ void main() {
 
     test('play maps platform errors to domain exception', () async {
       final player = SoundwavePlayer();
-      await player.init(const SoundwaveConfig(sampleRate: 48000, bufferSize: 2048, channels: 2));
+      await player.init(const SoundwaveConfig(
+          sampleRate: 48000, bufferSize: 2048, channels: 2));
       expect(
         () => player.play(),
         throwsA(isA<SoundwaveException>()
@@ -84,7 +96,8 @@ void main() {
 
     test('load forwards args', () async {
       final player = SoundwavePlayer();
-      await player.init(const SoundwaveConfig(sampleRate: 48000, bufferSize: 2048, channels: 2));
+      await player.init(const SoundwaveConfig(
+          sampleRate: 48000, bufferSize: 2048, channels: 2));
       await player.load('file://sample', headers: {'token': 'abc'});
       expect(calls.last.method, 'load');
       expect(
