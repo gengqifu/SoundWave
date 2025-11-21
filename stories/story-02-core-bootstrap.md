@@ -4,8 +4,8 @@
 搭建跨平台 C/C++ 音频核心骨架与 CMake 工程，抽象 `AudioEngine` 接口（`init/load/play/pause/stop/seek`），空跑回调，确保可编译和单测跑通（TDD）。
 
 ## 测试优先（TDD）
-- ✖ [1] 先编写 gtest：接口实例化、生命周期调用序列（init→play→pause→stop）空实现不崩溃，返回成功码。
-- ✖ [2] 验证 CMake 构建目标存在、可被测试用例链接。
+- ✅ [1] 先编写 gtest：接口实例化、生命周期调用序列（init→play→pause→stop）空实现不崩溃，返回成功码。
+- ✅ [2] 验证 CMake 构建目标存在、可被测试用例链接。
 
 ## 开发任务
 - ✖ [3] 创建 `AudioEngine` 接口与空实现（stub），定义初始化参数结构。
