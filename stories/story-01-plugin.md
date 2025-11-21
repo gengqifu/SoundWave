@@ -11,7 +11,7 @@
 - ✅ [3] 使用 `flutter create --template=plugin soundwave_player` 初始化插件工程。
 - ✅ [4] 定义平台无关的 Dart API：`init(config)`, `load(source)`, `play()`, `pause()`, `stop()`, `seek(ms)`.
 - ✅ [5] 建立 EventChannel 事件流（state/pcm/spectrum 占位），返回标准错误码/错误文本。
-- ✖ [6] 参数校验与错误映射：非法参数、未初始化调用、重复调用等。
+- ✅ [6] 参数校验与错误映射：非法参数、未初始化调用、重复调用等。
 - ✖ [7] 配置 `flutter analyze`、format 钩子。
 
 ## 完成标准（DoD）

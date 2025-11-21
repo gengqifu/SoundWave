@@ -18,17 +18,23 @@ class SoundwavePlayer {
   final EventChannel _stateChannel;
   final EventChannel _pcmChannel;
   final EventChannel _spectrumChannel;
+  bool _initialized = false;
 
   Stream<dynamic> get stateEvents => _stateChannel.receiveBroadcastStream();
   Stream<dynamic> get pcmEvents => _pcmChannel.receiveBroadcastStream();
   Stream<dynamic> get spectrumEvents => _spectrumChannel.receiveBroadcastStream();
 
   Future<void> init(SoundwaveConfig config) async {
+    if (_initialized) {
+      throw StateError('SoundwavePlayer has already been initialized');
+    }
     config.validate();
     await _invoke<void>('init', config.toMap());
+    _initialized = true;
   }
 
   Future<void> load(String source, {Map<String, Object?>? headers}) async {
+    _ensureInitialized();
     if (source.trim().isEmpty) {
       throw ArgumentError.value(source, 'source', 'cannot be empty');
     }
@@ -38,11 +44,23 @@ class SoundwavePlayer {
     });
   }
 
-  Future<void> play() => _invoke<void>('play');
-  Future<void> pause() => _invoke<void>('pause');
-  Future<void> stop() => _invoke<void>('stop');
+  Future<void> play() {
+    _ensureInitialized();
+    return _invoke<void>('play');
+  }
+
+  Future<void> pause() {
+    _ensureInitialized();
+    return _invoke<void>('pause');
+  }
+
+  Future<void> stop() {
+    _ensureInitialized();
+    return _invoke<void>('stop');
+  }
 
   Future<void> seek(Duration position) async {
+    _ensureInitialized();
     if (position.isNegative) {
       throw ArgumentError.value(position, 'position', 'must be >= 0');
     }
@@ -54,6 +72,12 @@ class SoundwavePlayer {
       return await _methodChannel.invokeMethod<T>(method, arguments);
     } on PlatformException catch (e) {
       throw SoundwaveException(e.code, e.message ?? 'Unknown error', e.details);
+    }
+  }
+
+  void _ensureInitialized() {
+    if (!_initialized) {
+      throw StateError('SoundwavePlayer has not been initialized');
     }
   }
 }
