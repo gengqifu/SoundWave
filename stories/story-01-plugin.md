@@ -4,7 +4,7 @@
 创建 Flutter 插件 `soundwave_player` 的基础框架，定义 Method/EventChannel 接口雏形，支持 `init/load/play/pause/stop/seek` 空实现，具备参数校验和错误返回（TDD）。
 
 ## 测试优先（TDD）
-- ✖ [1] 先编写 Dart 单测：MethodChannel 调用契约、参数校验、错误映射；EventChannel 订阅/取消。
+- ✅ [1] 先编写 Dart 单测：MethodChannel 调用契约、参数校验、错误映射；EventChannel 订阅/取消。
 - ✖ [2] 确保 `flutter analyze`、`flutter test` 作为初始空实现的门禁。
 
 ## 开发任务
