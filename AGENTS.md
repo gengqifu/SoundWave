@@ -14,7 +14,7 @@
 - **Audio Core (C/C++) Agent**：负责音频解码（FFmpeg/平台解码器）、重采样、缓冲、PCM 队列；实现时域/频域处理（窗口化、FFT）；提供零拷贝/低拷贝数据面向 UI 层。
 - **Threading/Performance Agent**：设计音频回调/渲染线程模型，避免主线程阻塞；锁策略、环形缓冲、内存复用；定义延迟与吞吐监控点。
 - **QA/Testing Agent**：牵头 TDD，用例先行；制定测试矩阵（端到端播放、丢包/弱网、长时间运行、前后台切换）；音质与性能基准（XRuns、延迟、CPU/GPU、内存）；落地 CI 自动化脚本与覆盖率目标。
-- **DevOps Agent**：CI 配置（格式化、静态检查、单测、集成测）；构建产物分发；依赖管理与缓存（Flutter/CMake/FFmpeg）。
+- **DevOps Agent**：CI 配置（格式化、静态检查、单测、集成测）；构建产物分发；依赖管理与缓存（Flutter/CMake/FFmpeg）；环境维护（Flutter SDK 路径/权限、可写 HOME 目录、Android SDK/NDK/CMake 版本一致性）。
 
 ## 3. TDD 开发准则
 - 用例先行：每个功能/缺陷先编写失败的单测/集成测，再实现代码使之通过。
