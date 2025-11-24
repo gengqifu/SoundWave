@@ -29,6 +29,21 @@ TEST_F(AudioEngineTest, LoadInvalidSourceReturnsError) {
   EXPECT_EQ(engine_->Init(cfg), Status::kOk);
   EXPECT_EQ(engine_->Load(""), Status::kInvalidArguments);
   EXPECT_EQ(engine_->Load("file:///tmp/sample.txt"), Status::kNotSupported);
+  EXPECT_EQ(engine_->Load("file:///tmp/missing.mp3"), Status::kIoError);
+  EXPECT_EQ(engine_->Load("file:///tmp/decodefail.mp3"), Status::kError);
+}
+
+TEST_F(AudioEngineTest, LoadWithoutInitIsInvalidState) {
+  ASSERT_NE(engine_, nullptr);
+  EXPECT_EQ(engine_->Load("file:///tmp/sample.mp3"), Status::kInvalidState);
+}
+
+TEST_F(AudioEngineTest, InitRejectsInvalidConfig) {
+  ASSERT_NE(engine_, nullptr);
+  AudioConfig bad;
+  bad.sample_rate = 0;
+  bad.channels = 0;
+  EXPECT_EQ(engine_->Init(bad), Status::kInvalidArguments);
 }
 
 TEST_F(AudioEngineTest, CallbacksCanBeSet) {
@@ -70,6 +85,18 @@ TEST(DecoderStubTest, UnsupportedFormatReturnsFalse) {
   std::unique_ptr<Decoder> dec = CreateStubDecoder();
   EXPECT_FALSE(dec->Open("file:///tmp/sample.txt"));
   EXPECT_EQ(dec->last_status(), Status::kNotSupported);
+}
+
+TEST(DecoderStubTest, MissingFileReturnsIoError) {
+  std::unique_ptr<Decoder> dec = CreateStubDecoder();
+  EXPECT_FALSE(dec->Open("file:///tmp/missing.mp3"));
+  EXPECT_EQ(dec->last_status(), Status::kIoError);
+}
+
+TEST(DecoderStubTest, DecodeFailureSetsError) {
+  std::unique_ptr<Decoder> dec = CreateStubDecoder();
+  EXPECT_FALSE(dec->Open("file:///tmp/decodefail.mp3"));
+  EXPECT_EQ(dec->last_status(), Status::kError);
 }
 
 TEST(DecoderStubTest, ConfigureOutputChangesReportedFormat) {

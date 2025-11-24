@@ -1,11 +1,45 @@
 #include "audio_engine.h"
+#include "decoder.h"
+
+#include <memory>
+#include <string>
 
 namespace sw {
 
 class AudioEngineStub : public AudioEngine {
  public:
-  Status Init(const AudioConfig& /*config*/) override { return Status::kOk; }
-  Status Load(const std::string& /*source*/) override { return Status::kOk; }
+  AudioEngineStub() : decoder_(CreateStubDecoder()) {}
+
+  Status Init(const AudioConfig& config) override {
+    if (config.sample_rate <= 0 || config.channels <= 0) {
+      return Status::kInvalidArguments;
+    }
+    if (!decoder_) {
+      decoder_ = CreateStubDecoder();
+    }
+    if (!decoder_->ConfigureOutput(config.sample_rate, config.channels)) {
+      return decoder_->last_status();
+    }
+    initialized_ = true;
+    loaded_ = false;
+    return Status::kOk;
+  }
+  Status Load(const std::string& source) override {
+    if (!initialized_) {
+      return Status::kInvalidState;
+    }
+    if (source.empty()) {
+      return Status::kInvalidArguments;
+    }
+    if (!decoder_) {
+      decoder_ = CreateStubDecoder();
+    }
+    if (!decoder_->Open(source)) {
+      return decoder_->last_status();
+    }
+    loaded_ = true;
+    return Status::kOk;
+  }
   Status Play() override { return Status::kOk; }
   Status Pause() override { return Status::kOk; }
   Status Stop() override { return Status::kOk; }
@@ -27,6 +61,10 @@ class AudioEngineStub : public AudioEngine {
   }
 
  private:
+  bool initialized_ = false;
+  bool loaded_ = false;
+  std::unique_ptr<Decoder> decoder_;
+
   void (*state_cb_)(const StateEvent&, void*) = nullptr;
   void* state_ud_ = nullptr;
 

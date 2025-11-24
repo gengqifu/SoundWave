@@ -5,6 +5,8 @@
 #include <string>
 #include <vector>
 
+#include "audio_engine.h"  // for Status
+
 namespace sw {
 
 struct PcmBuffer {
@@ -29,6 +31,9 @@ class Decoder {
   // Optional: override output format (e.g., resampler placeholder).
   // Returns false on invalid arguments; no-op stub will adjust reported format.
   virtual bool ConfigureOutput(int target_sample_rate, int target_channels) = 0;
+
+  // Returns last operation status (open/read/config).
+  virtual Status last_status() const = 0;
 };
 
 std::unique_ptr<Decoder> CreateStubDecoder();
