@@ -6,7 +6,7 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 
 option(SW_BUILD_TESTS "Build tests" ON)
-option(SW_ENABLE_FFMPEG "Link FFmpeg libraries when available" OFF)
+option(SW_ENABLE_FFMPEG "Link FFmpeg libraries when available" ON)
 
 set(FFMPEG_ROOT_DESKTOP "" CACHE PATH "FFmpeg install prefix for desktop builds")
 set(FFMPEG_ROOT_IOS "" CACHE PATH "FFmpeg install prefix for iOS builds")
@@ -29,7 +29,12 @@ if(SW_ENABLE_FFMPEG)
   elseif(IOS)
     set(_ffroot "${FFMPEG_ROOT_IOS}")
   else()
-    set(_ffroot "${FFMPEG_ROOT_DESKTOP}")
+    if(FFMPEG_ROOT_DESKTOP)
+      set(_ffroot "${FFMPEG_ROOT_DESKTOP}")
+    else()
+      # Default to local build output.
+      set(_ffroot "${CMAKE_SOURCE_DIR}/../ffmpeg/build/desktop")
+    endif()
   endif()
 
   if(NOT _ffroot)
