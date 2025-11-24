@@ -19,6 +19,10 @@ add_library(soundwave_core STATIC
 target_include_directories(soundwave_core PUBLIC include)
 
 if(SW_ENABLE_FFMPEG)
+  target_sources(soundwave_core PRIVATE src/decoder_ffmpeg.cpp)
+endif()
+
+if(SW_ENABLE_FFMPEG)
   if(ANDROID)
     set(_ffroot "${FFMPEG_ROOT_ANDROID}")
   elseif(IOS)
