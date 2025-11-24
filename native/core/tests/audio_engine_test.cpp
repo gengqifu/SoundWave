@@ -44,7 +44,7 @@ TEST_F(AudioEngineTest, CallbacksCanBeSet) {
 
 TEST(DecoderStubTest, OpenAndRead) {
   std::unique_ptr<Decoder> dec = CreateStubDecoder();
-  ASSERT_TRUE(dec->Open("file://sample"));
+  ASSERT_TRUE(dec->Open("file:///tmp/sample.mp3"));
   PcmBuffer buf;
   EXPECT_FALSE(dec->Read(buf));  // EOF
   EXPECT_EQ(buf.sample_rate, 48000);
@@ -53,9 +53,14 @@ TEST(DecoderStubTest, OpenAndRead) {
 
 TEST(DecoderStubTest, InvalidSourceReturnsFalse) {
   std::unique_ptr<Decoder> dec = CreateStubDecoder();
-  EXPECT_TRUE(dec->Open(""));  // stub still returns true
+  EXPECT_FALSE(dec->Open(""));
   PcmBuffer buf;
   EXPECT_FALSE(dec->Read(buf));
+}
+
+TEST(DecoderStubTest, UnsupportedFormatReturnsFalse) {
+  std::unique_ptr<Decoder> dec = CreateStubDecoder();
+  EXPECT_FALSE(dec->Open("file:///tmp/sample.txt"));
 }
 
 }  // namespace sw
