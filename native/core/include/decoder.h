@@ -17,8 +17,10 @@ class Decoder {
  public:
   virtual ~Decoder() = default;
 
+  // Returns true on open success; false on error (e.g., not found, not supported).
   virtual bool Open(const std::string& source) = 0;
-  virtual bool Read(PcmBuffer& out_buffer) = 0;  // false when EOF or error.
+  // Returns true if a frame is read; false on EOF or error.
+  virtual bool Read(PcmBuffer& out_buffer) = 0;
   virtual void Close() = 0;
 
   virtual int sample_rate() const = 0;

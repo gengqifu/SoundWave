@@ -51,4 +51,11 @@ TEST(DecoderStubTest, OpenAndRead) {
   EXPECT_EQ(buf.channels, 2);
 }
 
+TEST(DecoderStubTest, InvalidSourceReturnsFalse) {
+  std::unique_ptr<Decoder> dec = CreateStubDecoder();
+  EXPECT_TRUE(dec->Open(""));  // stub still returns true
+  PcmBuffer buf;
+  EXPECT_FALSE(dec->Read(buf));
+}
+
 }  // namespace sw
