@@ -14,7 +14,7 @@
 - ✅ [6] 与 `AudioEngine` 接口对接，填充 load/init 流程。
 - ✅ [7] 引入 FFmpeg 预编译库（iOS/Android），CMake 集成头文件与链接配置，支持本地构建。
 - ✅ [8] 实现 `DecoderFFmpeg`（open/read/close/config），按 FFmpeg 错误码映射到统一 `Status`。
-- ✖ [9] gtest 覆盖真实解码：小样本文件（mp3/aac/wav/flac）解码成功/错误路径。
+- ✅ [9] gtest 覆盖真实解码：小样本文件（mp3/aac/wav/flac）解码成功/错误路径。
 - ✖ [10] `AudioEngine` 默认切换到 FFmpeg decoder，保留 stub/平台解码器作为兜底。
 - ✖ [11] 文档与脚本：README 增加 FFmpeg 依赖获取方式、构建脚本/缓存策略。
 

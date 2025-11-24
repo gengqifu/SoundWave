@@ -133,6 +133,21 @@ TEST(DecoderStubTest, RepeatedOpenReadCloseDoesNotCrash) {
 
 #ifdef SW_ENABLE_FFMPEG
 namespace {
+std::optional<std::string> FindSample(const std::string& name) {
+  // Look under repo ffmpeg/testdata/ or native/core/tests/data/.
+  const std::vector<std::filesystem::path> roots = {
+      std::filesystem::path(__FILE__).parent_path() / "data",
+      std::filesystem::path(__FILE__).parent_path().parent_path().parent_path() / "ffmpeg" /
+          "testdata"};
+  for (const auto& root : roots) {
+    auto p = root / name;
+    if (std::filesystem::exists(p)) {
+      return p.string();
+    }
+  }
+  return std::nullopt;
+}
+
 std::string WriteTinyWav(const std::string& filename) {
   // Minimal PCM s16le mono wav with a few samples of silence.
   const int sample_rate = 16000;
@@ -204,6 +219,81 @@ TEST(DecoderFFmpegTest, MissingFileReturnsIoError) {
   std::unique_ptr<Decoder> dec = CreateFFmpegDecoder();
   EXPECT_FALSE(dec->Open("/tmp/soundwave_ffmpeg_missing.wav"));
   EXPECT_EQ(dec->last_status(), Status::kIoError);
+}
+
+TEST(DecoderFFmpegTest, DecodeMp3IfPresent) {
+  auto path = FindSample("sample.mp3");
+  if (!path) {
+    GTEST_SKIP() << "mp3 sample not found";
+  }
+  std::unique_ptr<Decoder> dec = CreateFFmpegDecoder();
+  ASSERT_TRUE(dec->Open(*path));
+  PcmBuffer buf;
+  bool got_frame = false;
+  while (dec->Read(buf)) {
+    if (!buf.interleaved.empty()) {
+      got_frame = true;
+      break;
+    }
+  }
+  EXPECT_TRUE(got_frame);
+  EXPECT_GT(buf.sample_rate, 0);
+  EXPECT_GE(buf.channels, 1);
+}
+
+TEST(DecoderFFmpegTest, DecodeAacIfPresent) {
+  auto path = FindSample("sample.aac");
+  if (!path) {
+    GTEST_SKIP() << "aac sample not found";
+  }
+  std::unique_ptr<Decoder> dec = CreateFFmpegDecoder();
+  ASSERT_TRUE(dec->Open(*path));
+  PcmBuffer buf;
+  bool got_frame = false;
+  while (dec->Read(buf)) {
+    if (!buf.interleaved.empty()) {
+      got_frame = true;
+      break;
+    }
+  }
+  EXPECT_TRUE(got_frame);
+  EXPECT_GT(buf.sample_rate, 0);
+  EXPECT_GE(buf.channels, 1);
+}
+
+TEST(DecoderFFmpegTest, DecodeFlacIfPresent) {
+  auto path = FindSample("sample.flac");
+  if (!path) {
+    GTEST_SKIP() << "flac sample not found";
+  }
+  std::unique_ptr<Decoder> dec = CreateFFmpegDecoder();
+  ASSERT_TRUE(dec->Open(*path));
+  PcmBuffer buf;
+  bool got_frame = false;
+  while (dec->Read(buf)) {
+    if (!buf.interleaved.empty()) {
+      got_frame = true;
+      break;
+    }
+  }
+  EXPECT_TRUE(got_frame);
+  EXPECT_GT(buf.sample_rate, 0);
+  EXPECT_GE(buf.channels, 1);
+}
+
+TEST(DecoderFFmpegTest, CorruptFileReturnsError) {
+  std::filesystem::path corrupt =
+      std::filesystem::temp_directory_path() / "soundwave_ffmpeg_corrupt.bin";
+  {
+    std::ofstream out(corrupt, std::ios::binary);
+    out << "NOT_A_MEDIA_FILE";
+  }
+  std::unique_ptr<Decoder> dec = CreateFFmpegDecoder();
+  ASSERT_TRUE(dec->ConfigureOutput(16000, 2));
+  EXPECT_FALSE(dec->Open(corrupt.string()));
+  // IoError when cannot parse header; could also be kError depending on FFmpeg code paths.
+  EXPECT_TRUE(dec->last_status() == Status::kIoError || dec->last_status() == Status::kError);
+  std::filesystem::remove(corrupt);
 }
 #endif  // SW_ENABLE_FFMPEG
 
