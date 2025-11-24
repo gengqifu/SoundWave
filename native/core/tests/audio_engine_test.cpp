@@ -16,11 +16,19 @@ TEST_F(AudioEngineTest, LifecycleDoesNotCrash) {
   ASSERT_NE(engine_, nullptr);
   AudioConfig cfg;
   EXPECT_EQ(engine_->Init(cfg), Status::kOk);
-  EXPECT_EQ(engine_->Load("file://sample"), Status::kOk);
+  EXPECT_EQ(engine_->Load("file:///tmp/sample.mp3"), Status::kOk);
   EXPECT_EQ(engine_->Play(), Status::kOk);
   EXPECT_EQ(engine_->Pause(), Status::kOk);
   EXPECT_EQ(engine_->Seek(1000), Status::kOk);
   EXPECT_EQ(engine_->Stop(), Status::kOk);
+}
+
+TEST_F(AudioEngineTest, LoadInvalidSourceReturnsError) {
+  ASSERT_NE(engine_, nullptr);
+  AudioConfig cfg;
+  EXPECT_EQ(engine_->Init(cfg), Status::kOk);
+  EXPECT_EQ(engine_->Load(""), Status::kInvalidArguments);
+  EXPECT_EQ(engine_->Load("file:///tmp/sample.txt"), Status::kNotSupported);
 }
 
 TEST_F(AudioEngineTest, CallbacksCanBeSet) {
@@ -49,18 +57,19 @@ TEST(DecoderStubTest, OpenAndRead) {
   EXPECT_FALSE(dec->Read(buf));  // EOF
   EXPECT_EQ(buf.sample_rate, 48000);
   EXPECT_EQ(buf.channels, 2);
+  EXPECT_EQ(dec->last_status(), Status::kOk);
 }
 
 TEST(DecoderStubTest, InvalidSourceReturnsFalse) {
   std::unique_ptr<Decoder> dec = CreateStubDecoder();
   EXPECT_FALSE(dec->Open(""));
-  PcmBuffer buf;
-  EXPECT_FALSE(dec->Read(buf));
+  EXPECT_EQ(dec->last_status(), Status::kInvalidArguments);
 }
 
 TEST(DecoderStubTest, UnsupportedFormatReturnsFalse) {
   std::unique_ptr<Decoder> dec = CreateStubDecoder();
   EXPECT_FALSE(dec->Open("file:///tmp/sample.txt"));
+  EXPECT_EQ(dec->last_status(), Status::kNotSupported);
 }
 
 TEST(DecoderStubTest, ConfigureOutputChangesReportedFormat) {
@@ -73,11 +82,13 @@ TEST(DecoderStubTest, ConfigureOutputChangesReportedFormat) {
   EXPECT_EQ(buf.channels, 1);
   EXPECT_EQ(dec->sample_rate(), 44100);
   EXPECT_EQ(dec->channels(), 1);
+  EXPECT_EQ(dec->last_status(), Status::kOk);
 }
 
 TEST(DecoderStubTest, ConfigureOutputRejectsInvalid) {
   std::unique_ptr<Decoder> dec = CreateStubDecoder();
   EXPECT_FALSE(dec->ConfigureOutput(-1, 0));
+  EXPECT_EQ(dec->last_status(), Status::kInvalidArguments);
 }
 
 }  // namespace sw
