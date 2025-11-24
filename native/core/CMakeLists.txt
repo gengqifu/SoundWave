@@ -20,6 +20,7 @@ target_include_directories(soundwave_core PUBLIC include)
 
 if(SW_ENABLE_FFMPEG)
   target_sources(soundwave_core PRIVATE src/decoder_ffmpeg.cpp)
+  target_compile_definitions(soundwave_core PUBLIC SW_ENABLE_FFMPEG=1)
 endif()
 
 if(SW_ENABLE_FFMPEG)
@@ -56,6 +57,20 @@ if(SW_ENABLE_FFMPEG)
     ${FFMPEG_SWRESAMPLE}
     ${FFMPEG_SWSCALE}
   )
+  if(APPLE)
+    target_link_libraries(soundwave_core PUBLIC
+      "-framework Security"
+      "-framework CoreFoundation"
+      "-framework VideoToolbox"
+      "-framework CoreVideo"
+      "-framework AudioToolbox"
+      "-framework CoreMedia"
+      "-framework AVFoundation"
+      iconv
+      z
+      bz2
+    )
+  endif()
 endif()
 
 if(SW_BUILD_TESTS AND NOT ANDROID AND NOT IOS)
@@ -66,6 +81,9 @@ if(SW_BUILD_TESTS AND NOT ANDROID AND NOT IOS)
       tests/audio_engine_test.cpp
     )
     target_link_libraries(audio_core_tests PRIVATE soundwave_core GTest::gtest_main)
+    if(SW_ENABLE_FFMPEG)
+      target_compile_definitions(audio_core_tests PRIVATE SW_ENABLE_FFMPEG=1)
+    endif()
     add_test(NAME audio_core_tests COMMAND audio_core_tests)
   else()
     message(WARNING "GTest not found; tests will be skipped")

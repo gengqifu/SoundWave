@@ -2,6 +2,8 @@
 #include "decoder.h"
 
 #include <gtest/gtest.h>
+#include <filesystem>
+#include <fstream>
 #include <memory>
 
 namespace sw {
@@ -128,5 +130,81 @@ TEST(DecoderStubTest, RepeatedOpenReadCloseDoesNotCrash) {
   }
   // No explicit leak check here; test ensures stability across many iterations.
 }
+
+#ifdef SW_ENABLE_FFMPEG
+namespace {
+std::string WriteTinyWav(const std::string& filename) {
+  // Minimal PCM s16le mono wav with a few samples of silence.
+  const int sample_rate = 16000;
+  const int channels = 1;
+  const int16_t samples[] = {0, 0, 0, 0, 0, 0};
+  const int num_samples = static_cast<int>(sizeof(samples) / sizeof(samples[0]));
+  const int bytes_per_sample = sizeof(int16_t);
+  const int data_size = num_samples * bytes_per_sample * channels;
+  const int fmt_chunk_size = 16;
+  const int audio_format = 1;  // PCM
+  const int byte_rate = sample_rate * channels * bytes_per_sample;
+  const int block_align = channels * bytes_per_sample;
+  const int bits_per_sample = 8 * bytes_per_sample;
+  const int riff_chunk_size = 4 /*WAVE*/ + 8 + fmt_chunk_size + 8 + data_size;
+
+  std::filesystem::path path = std::filesystem::temp_directory_path() / filename;
+  std::ofstream out(path, std::ios::binary);
+  // RIFF header
+  out.write("RIFF", 4);
+  int32_t chunk_size_le = riff_chunk_size;
+  out.write(reinterpret_cast<const char*>(&chunk_size_le), 4);
+  out.write("WAVE", 4);
+  // fmt subchunk
+  out.write("fmt ", 4);
+  int32_t fmt_size_le = fmt_chunk_size;
+  out.write(reinterpret_cast<const char*>(&fmt_size_le), 4);
+  int16_t audio_fmt_le = audio_format;
+  int16_t num_channels_le = channels;
+  int32_t sample_rate_le = sample_rate;
+  int32_t byte_rate_le = byte_rate;
+  int16_t block_align_le = block_align;
+  int16_t bits_per_sample_le = bits_per_sample;
+  out.write(reinterpret_cast<const char*>(&audio_fmt_le), 2);
+  out.write(reinterpret_cast<const char*>(&num_channels_le), 2);
+  out.write(reinterpret_cast<const char*>(&sample_rate_le), 4);
+  out.write(reinterpret_cast<const char*>(&byte_rate_le), 4);
+  out.write(reinterpret_cast<const char*>(&block_align_le), 2);
+  out.write(reinterpret_cast<const char*>(&bits_per_sample_le), 2);
+  // data subchunk
+  out.write("data", 4);
+  int32_t data_size_le = data_size;
+  out.write(reinterpret_cast<const char*>(&data_size_le), 4);
+  out.write(reinterpret_cast<const char*>(samples), data_size);
+  out.close();
+  return path.string();
+}
+}  // namespace
+
+TEST(DecoderFFmpegTest, DecodeTinyWavSuccess) {
+  std::string wav_path = WriteTinyWav("soundwave_ffmpeg_test.wav");
+  std::unique_ptr<Decoder> dec = CreateFFmpegDecoder();
+  ASSERT_TRUE(dec->ConfigureOutput(16000, 1));
+  ASSERT_TRUE(dec->Open(wav_path));
+  PcmBuffer buf;
+  bool got_frame = false;
+  while (dec->Read(buf)) {
+    if (!buf.interleaved.empty()) {
+      got_frame = true;
+      break;
+    }
+  }
+  EXPECT_TRUE(got_frame);
+  EXPECT_EQ(buf.sample_rate, 16000);
+  EXPECT_EQ(buf.channels, 1);
+  EXPECT_EQ(dec->last_status(), Status::kOk);
+}
+
+TEST(DecoderFFmpegTest, MissingFileReturnsIoError) {
+  std::unique_ptr<Decoder> dec = CreateFFmpegDecoder();
+  EXPECT_FALSE(dec->Open("/tmp/soundwave_ffmpeg_missing.wav"));
+  EXPECT_EQ(dec->last_status(), Status::kIoError);
+}
+#endif  // SW_ENABLE_FFMPEG
 
 }  // namespace sw
