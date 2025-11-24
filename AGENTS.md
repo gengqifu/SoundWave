@@ -11,10 +11,10 @@
 - **Product/UX Agent**：定义核心场景（本地文件、流式播放）、交互（缩放、拖动、播放控制）、性能目标（帧率/延迟）、视觉规格（主题、波形样式）。
 - **Flutter UI Agent**：实现界面、状态管理（如 Riverpod/Provider/BLoC 任选其一）、动画与触控交互；桥接原生插件接口；绘制定制 Waveform/FFT 组件。
 - **Flutter Plugin Agent**：定义 `MethodChannel`/`PlatformChannel` 接口；封装原生 C++/平台端能力为 Flutter 插件；提供参数校验和错误映射。
-- **Audio Core (C/C++) Agent**：负责音频解码（FFmpeg/平台解码器）、重采样、缓冲、PCM 队列；实现时域/频域处理（窗口化、FFT）；提供零拷贝/低拷贝数据面向 UI 层。
+- **Audio Core (C/C++) Agent**：负责音频解码（优先 FFmpeg，平台解码器作为降级）、重采样、缓冲、PCM 队列；实现时域/频域处理（窗口化、FFT）；提供零拷贝/低拷贝数据面向 UI 层。
 - **Threading/Performance Agent**：设计音频回调/渲染线程模型，避免主线程阻塞；锁策略、环形缓冲、内存复用；定义延迟与吞吐监控点。
 - **QA/Testing Agent**：牵头 TDD，用例先行；制定测试矩阵（端到端播放、丢包/弱网、长时间运行、前后台切换）；音质与性能基准（XRuns、延迟、CPU/GPU、内存）；落地 CI 自动化脚本与覆盖率目标。
-- **DevOps Agent**：CI 配置（格式化、静态检查、单测、集成测）；构建产物分发；依赖管理与缓存（Flutter/CMake/FFmpeg）；环境维护（Flutter SDK 路径/权限、可写 HOME 目录、Android SDK/NDK/CMake 版本一致性）。
+- **DevOps Agent**：CI 配置（格式化、静态检查、单测、集成测）；构建产物分发；依赖管理与缓存（Flutter/CMake/FFmpeg 预编译包）；环境维护（Flutter SDK 路径/权限、可写 HOME 目录、Android SDK/NDK/CMake 版本一致性）。
 
 ## 3. TDD 开发准则
 - 用例先行：每个功能/缺陷先编写失败的单测/集成测，再实现代码使之通过。
@@ -39,7 +39,7 @@
   - `onSpectrum(float[] spectrum)`: 频域结果（与窗口大小/重叠度配套的 meta）。
   - `onState(event)`: 缓冲、错误、完成。
 - **C/C++ 音频核心**
-  - 解码：FFmpeg（或平台解码器）输出统一的 PCM（float32/16bit 可配置）。
+  - 解码：FFmpeg 为默认后端输出统一的 PCM（float32/16bit 可配置），平台解码器为备选。
   - 缓冲：环形缓冲 + 双缓冲输出，保证实时性。
   - DSP：窗口化 (Hann/Hamming)，FFT（可用 KissFFT/FFTW/平台 FFT），峰值/均方能量。
   - 时钟：以音频回放时钟驱动 UI 更新时间，确保同步。
@@ -53,7 +53,7 @@
 ## 6. 工具与依赖建议
 - Flutter 3.x（最新稳定）。
 - 插件模板使用 `flutter create --org ... --template=plugin soundwave_player`。
-- CMake 构建 C++ 核心；可选引入 FFmpeg（编译静态库）或使用平台 `AVAudioEngine` / `MediaCodec`。
+- CMake 构建 C++ 核心；引入 FFmpeg 预编译静态库（iOS/Android，arm64/armv7/x86_64），配置头文件与链接路径；必要时 fallback 平台 `AVAudioEngine` / `MediaCodec`。
 - FFT：KissFFT（轻量）或平台加速（Apple vDSP / Android FFT）。
 - 测试：`flutter test`、自定义集成测试（integration_test），profile 构建收集性能。
 
@@ -70,6 +70,6 @@
 - M4：弱网/长时间稳定性测试 + CI/分发流程。
 
 ## 9. 风险与缓解
-- 移动端编译 FFmpeg 复杂：预编译二进制 + CMake cache；必要时选择平台解码器。
+- 移动端编译 FFmpeg 复杂：预编译二进制 + CMake cache；CI 提供下载/校验脚本；必要时选择平台解码器。
 - 跨线程同步/锁竞争：环形缓冲 + 无锁队列；避免在回放回调做重计算，FFT 可在独立线程。
 - 数据量大导致 UI 卡顿：分帧限速、抽稀；用 `ui.Image`/`CustomPainter` 批量绘制，避免逐点绘制。

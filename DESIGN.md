@@ -10,7 +10,7 @@
 
 ## 2. 关键模块
 - `AudioEngine`（C/C++）：驱动解码与回放，管理音频设备、时钟同步、环形缓冲。
-- `Decoder`：封装 FFmpeg/平台解码器，统一输出 PCM（float32/16bit 可配置）。
+- `Decoder`：封装 FFmpeg（默认）/平台解码器，统一输出 PCM（float32/16bit 可配置）。
 - `Resampler`：采样率转化与通道布局统一（立体声/单声道）。
 - `RingBuffer`：无锁/轻锁实现，支撑回放线程与处理线程的数据交换。
 - `DSP/FFT`：窗口化（Hann/Hamming），FFT（KissFFT/vDSP/Android FFT），计算功率谱/能量。
