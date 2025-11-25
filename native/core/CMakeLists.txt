@@ -15,6 +15,7 @@ set(FFMPEG_ROOT_ANDROID "" CACHE PATH "FFmpeg install prefix for Android builds"
 add_library(soundwave_core STATIC
   src/audio_engine_stub.cpp
   src/decoder_stub.cpp
+  src/ring_buffer.cpp
 )
 target_include_directories(soundwave_core PUBLIC include)
 
@@ -84,6 +85,7 @@ if(SW_BUILD_TESTS AND NOT ANDROID AND NOT IOS)
   if(GTest_FOUND)
     add_executable(audio_core_tests
       tests/audio_engine_test.cpp
+      tests/ring_buffer_test.cpp
     )
     target_link_libraries(audio_core_tests PRIVATE soundwave_core GTest::gtest_main)
     if(SW_ENABLE_FFMPEG)
