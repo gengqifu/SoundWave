@@ -34,6 +34,7 @@ class PlaybackThread {
 
   // Current playback position in milliseconds (accumulated).
   int64_t position_ms() const { return position_ms_.load(); }
+  void ResetPosition(int64_t position_ms = 0) { position_ms_.store(position_ms); }
 
   // Optional callback invoked when position advances; called from playback thread.
   void SetPositionCallback(std::function<void(int64_t)> cb);

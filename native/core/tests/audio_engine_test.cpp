@@ -2,9 +2,12 @@
 #include "decoder.h"
 
 #include <gtest/gtest.h>
+#include <atomic>
+#include <chrono>
 #include <filesystem>
 #include <fstream>
 #include <memory>
+#include <thread>
 
 namespace sw {
 
@@ -65,6 +68,36 @@ TEST_F(AudioEngineTest, CallbacksCanBeSet) {
   EXPECT_FALSE(state_called);
   EXPECT_FALSE(pcm_called);
   EXPECT_FALSE(pos_called);
+}
+
+TEST_F(AudioEngineTest, PlayAdvancesPositionCallback) {
+  ASSERT_NE(engine_, nullptr);
+  AudioConfig cfg;
+  cfg.sample_rate = 48000;
+  cfg.channels = 2;
+  cfg.frames_per_buffer = 128;
+  ASSERT_EQ(engine_->Init(cfg), Status::kOk);
+  ASSERT_EQ(engine_->Load("file:///tmp/sample.mp3"), Status::kOk);
+
+  std::atomic<int> pos_calls{0};
+  std::atomic<int64_t> last_pos{-1};
+  auto ctx = std::make_pair(&pos_calls, &last_pos);
+  engine_->SetPositionCallback(
+      [](int64_t pos, void* ud) {
+        auto* pair = static_cast<std::pair<std::atomic<int>*, std::atomic<int64_t>*>*>(ud);
+        pair->first->fetch_add(1);
+        pair->second->store(pos);
+      },
+      &ctx);
+
+  ASSERT_EQ(engine_->Play(), Status::kOk);
+  // Wait for a few callbacks.
+  for (int i = 0; i < 50 && pos_calls.load() < 3; ++i) {
+    std::this_thread::sleep_for(std::chrono::milliseconds(5));
+  }
+  ASSERT_EQ(engine_->Pause(), Status::kOk);
+  EXPECT_GE(pos_calls.load(), 1);
+  EXPECT_GT(last_pos.load(), 0);
 }
 
 TEST(DecoderStubTest, OpenAndRead) {
