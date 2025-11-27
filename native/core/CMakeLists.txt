@@ -18,6 +18,7 @@ add_library(soundwave_core STATIC
   src/ring_buffer.cpp
   src/playback_thread.cpp
   src/pcm_throttler.cpp
+  src/fft_spectrum.cpp
   third_party/kissfft/kiss_fft.c
   third_party/kissfft/tools/kiss_fftr.c
 )
@@ -96,6 +97,7 @@ if(SW_BUILD_TESTS AND NOT ANDROID AND NOT IOS)
       tests/ring_buffer_test.cpp
       tests/playback_thread_test.cpp
       tests/pcm_throttle_test.cpp
+      tests/fft_spectrum_test.cpp
     )
     target_link_libraries(audio_core_tests PRIVATE soundwave_core GTest::gtest_main)
     if(SW_ENABLE_FFMPEG)
@@ -105,6 +107,7 @@ if(SW_BUILD_TESTS AND NOT ANDROID AND NOT IOS)
     add_test(NAME ring_buffer_tests COMMAND audio_core_tests --gtest_filter=RingBufferTest.*)
     add_test(NAME playback_thread_tests COMMAND audio_core_tests --gtest_filter=PlaybackThreadTest.*)
     add_test(NAME pcm_throttle_tests COMMAND audio_core_tests --gtest_filter=PcmThrottleTest.*)
+    add_test(NAME fft_spectrum_tests COMMAND audio_core_tests --gtest_filter=FftSpectrumTest.*)
   else()
     message(WARNING "GTest not found; tests will be skipped")
   endif()
