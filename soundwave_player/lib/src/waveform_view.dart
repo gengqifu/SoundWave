@@ -6,19 +6,25 @@ import 'package:flutter/material.dart';
 import 'pcm_buffer.dart';
 import 'pcm_frame.dart';
 import 'waveform_cache.dart';
+import 'waveform_style.dart';
 
 class WaveformView extends StatelessWidget {
-  const WaveformView(
+  WaveformView(
       {super.key,
       required this.frames,
-      this.color = Colors.blue,
-      this.background,
+      this.style,
+      Color color = Colors.blue,
+      Color? background,
       this.cache,
-      this.strokeWidth = 1.0});
+      double strokeWidth = 1.0})
+      : color = style?.color ?? color,
+        background = style?.background ?? background ?? Colors.black,
+        strokeWidth = style?.strokeWidth ?? strokeWidth;
 
   final List<PcmFrame> frames;
+  final WaveformStyle? style;
   final Color color;
-  final Color? background;
+  final Color background;
   final WaveformCache? cache;
   final double strokeWidth;
 
@@ -34,7 +40,7 @@ class WaveformView extends StatelessWidget {
     return CustomPaint(
       painter: _WaveformPainter(frames,
           color: color,
-          background: background ?? Colors.black,
+          background: background,
           strokeWidth: strokeWidth,
           cache: cache),
       size: const Size(double.infinity, 120),

@@ -15,8 +15,10 @@ class WaveformStreamView extends StatefulWidget {
     this.background = Colors.black,
     this.maxSamples = 5000,
     this.frameInterval = const Duration(milliseconds: 16),
+    this.maxFramesPerTick = 8,
     this.strokeWidth = 1.0,
     this.height = 120,
+    this.onDrain,
   });
 
   final PcmBuffer buffer;
@@ -24,8 +26,10 @@ class WaveformStreamView extends StatefulWidget {
   final Color background;
   final int maxSamples;
   final Duration frameInterval;
+  final int maxFramesPerTick;
   final double strokeWidth;
   final double height;
+  final void Function(PcmPullResult result)? onDrain;
 
   @override
   State<WaveformStreamView> createState() => _WaveformStreamViewState();
@@ -40,8 +44,9 @@ class _WaveformStreamViewState extends State<WaveformStreamView> {
     super.initState();
     _cache = WaveformCache(maxSamples: widget.maxSamples);
     _timer = Timer.periodic(widget.frameInterval, (_) {
-      final res = widget.buffer.drain(8); // 一次读取有限帧，避免过载。
+      final res = widget.buffer.drain(widget.maxFramesPerTick); // 一次读取有限帧，避免过载。
       if (res.frames.isNotEmpty || res.droppedBefore > 0) {
+        widget.onDrain?.call(res);
         setState(() {
           for (final f in res.frames) {
             _cache.addSamples(f.samples);
