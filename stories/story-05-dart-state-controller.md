@@ -5,7 +5,7 @@
 
 ## 测试优先（TDD）
 - ✔ [1] 先编写 Dart 单测：状态流变更、错误分支、未初始化调用防护。
-- ✖ [2] Widget/GD 测试：基础控件状态展示正确（可用占位 UI）。
+- ✔ [2] Widget/GD 测试：基础控件状态展示正确（可用占位 UI）。
 
 ## 开发任务
 - ✖ [3] 定义 `AudioState` 数据结构（position/duration/isPlaying/buffered/levels/spectrum）。
