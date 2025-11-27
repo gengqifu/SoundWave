@@ -42,6 +42,7 @@ class PcmThrottler {
   PcmThrottleConfig config_;
   int64_t last_emit_ms_ = -1;
   uint32_t pending_drops_ = 0;
+  int pending_kept_ = 0;
 };
 
 }  // namespace sw

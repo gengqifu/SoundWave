@@ -32,7 +32,8 @@ TEST(PcmThrottleTest, EnforcesMaxFpsAndAggregatesDrops) {
   EXPECT_EQ(emitted[0].dropped_before, 0u);
 
   EXPECT_EQ(emitted[1].sequence, 5u);  // 第 5 帧才满足 20ms 间隔
-  EXPECT_EQ(emitted[1].dropped_before, 3u);  // 帧 2-4 被抽稀
+  // 帧 2-4 在队列等待，不计为丢弃。
+  EXPECT_EQ(emitted[1].dropped_before, 0u);
 }
 
 TEST(PcmThrottleTest, DropsExcessPendingAndReports) {
@@ -54,13 +55,20 @@ TEST(PcmThrottleTest, DropsExcessPendingAndReports) {
     emitted.insert(emitted.end(), out.begin(), out.end());
   }
 
-  ASSERT_EQ(emitted.size(), 2u);
+  ASSERT_EQ(emitted.size(), 3u);
   EXPECT_EQ(emitted[0].sequence, 1u);
   EXPECT_EQ(emitted[0].dropped_before, 0u);
+  EXPECT_FALSE(emitted[0].dropped);
 
-  // 超额 pending（帧 2-4）应计入 dropped_before。
-  EXPECT_EQ(emitted[1].sequence, 5u);
-  EXPECT_EQ(emitted[1].dropped_before, 3u);
+  // 第 4 帧溢出 pending，生成 dropped 标记（丢弃 1 帧）。
+  EXPECT_TRUE(emitted[1].dropped);
+  EXPECT_EQ(emitted[1].sequence, 4u);
+  EXPECT_EQ(emitted[1].dropped_before, 1u);
+
+  // 第 5 帧满足间隔，仅携带真实丢弃的 1 帧。
+  EXPECT_FALSE(emitted[2].dropped);
+  EXPECT_EQ(emitted[2].sequence, 5u);
+  EXPECT_EQ(emitted[2].dropped_before, 1u);
 }
 
 }  // namespace sw
