@@ -14,5 +14,5 @@
 - ✔ [6] 简单样式配置（颜色、背景、线宽），明确默认主题。
 
 ## 完成标准（DoD）
-- ✖ [7] Widget/GD 测试通过，性能 smoke 无明显掉帧。
-- ✖ [8] `flutter analyze/test` 通过。
+- ✔ [7] Widget/GD 测试通过，性能 smoke 无明显掉帧。
+- ✔ [8] `flutter analyze/test` 通过。
