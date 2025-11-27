@@ -18,8 +18,14 @@ add_library(soundwave_core STATIC
   src/ring_buffer.cpp
   src/playback_thread.cpp
   src/pcm_throttler.cpp
+  third_party/kissfft/kiss_fft.c
+  third_party/kissfft/tools/kiss_fftr.c
 )
 target_include_directories(soundwave_core PUBLIC include)
+target_include_directories(soundwave_core PUBLIC
+  third_party/kissfft
+  third_party/kissfft/tools
+)
 
 if(SW_ENABLE_FFMPEG)
   target_sources(soundwave_core PRIVATE src/decoder_ffmpeg.cpp)
