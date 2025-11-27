@@ -13,3 +13,4 @@ export 'src/waveform_view.dart';
 export 'src/waveform_cache.dart';
 export 'src/waveform_stream_view.dart';
 export 'src/waveform_style.dart';
+export 'src/spectrum_view.dart';
