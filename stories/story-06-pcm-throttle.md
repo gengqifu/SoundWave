@@ -15,4 +15,4 @@
 - ✔ [7] 接口：在 `setVisualization/config` 或 `init` 中暴露参数。
 
 ## 完成标准（DoD）
-- ✖ [8] gtest/Dart 单测通过，压力测试下 CPU 占用受控。
+- ✔ [8] gtest/Dart 单测通过，压力测试下 CPU 占用受控。
