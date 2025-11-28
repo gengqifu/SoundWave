@@ -1,5 +1,6 @@
 #include "audio_engine.h"
 #include "decoder.h"
+#include "fft_spectrum.h"
 #include "pcm_throttler.h"
 #include "playback_thread.h"
 #include "ring_buffer.h"
@@ -32,6 +33,9 @@ class AudioEngineStub : public AudioEngine {
     cfg_ = config;
     if (cfg_.frames_per_buffer <= 0) {
       cfg_.frames_per_buffer = kDefaultFramesPerBuffer;
+    }
+    if (cfg_.spectrum_cfg.window_size <= 0) {
+      cfg_.spectrum_cfg.window_size = cfg_.frames_per_buffer;
     }
     ring_buffer_ = std::make_unique<RingBuffer>(kRingBufferCapacityFrames, cfg_.channels);
     playback_thread_ =
@@ -142,6 +146,12 @@ class AudioEngineStub : public AudioEngine {
     pos_ud_ = user_data;
   }
 
+  void SetSpectrumCallback(void (*callback)(const SpectrumFrame&, void*),
+                           void* user_data) override {
+    spectrum_cb_ = callback;
+    spectrum_ud_ = user_data;
+  }
+
  private:
   bool initialized_ = false;
   bool loaded_ = false;
@@ -177,6 +187,9 @@ class AudioEngineStub : public AudioEngine {
 
   void (*pos_cb_)(int64_t, void*) = nullptr;
   void* pos_ud_ = nullptr;
+
+  void (*spectrum_cb_)(const SpectrumFrame&, void*) = nullptr;
+  void* spectrum_ud_ = nullptr;
 
   static constexpr int kDefaultFramesPerBuffer = 256;
   static constexpr int kRingBufferCapacityFrames = 4096;
@@ -227,6 +240,7 @@ class AudioEngineStub : public AudioEngine {
             frame.sample_rate = cfg_.sample_rate;
             frame.timestamp_ms = o.timestamp_ms;
             pcm_cb_(frame, pcm_ud_);
+            MaybeEmitSpectrum(frame, o.timestamp_ms);
           }
         }
         pcm_timestamp_ms_.fetch_add(frame_duration_ms);
@@ -258,6 +272,37 @@ class AudioEngineStub : public AudioEngine {
 
   void ShutdownPlayback() {
     StopPlayback();
+  }
+
+  void MaybeEmitSpectrum(const PcmFrame& frame, int64_t timestamp_ms) {
+    if (!spectrum_cb_) return;
+    const int samples_per_channel = frame.num_frames;
+    if (frame.num_channels <= 0 || samples_per_channel <= 0) return;
+
+    SpectrumConfig spec_cfg = cfg_.spectrum_cfg;
+    if (spec_cfg.window_size <= 0 || spec_cfg.window_size > samples_per_channel) {
+      spec_cfg.window_size = samples_per_channel;
+    }
+
+    // 提取单声道数据用于 FFT（取第 1 个声道）。
+    std::vector<float> mono(static_cast<size_t>(spec_cfg.window_size));
+    for (int i = 0; i < spec_cfg.window_size; ++i) {
+      mono[static_cast<size_t>(i)] = frame.data[i * frame.num_channels];
+    }
+
+    auto spectrum = ComputeSpectrum(mono, frame.sample_rate, spec_cfg);
+    if (spectrum.empty()) return;
+
+    SpectrumFrame out;
+    out.bins = spectrum.data();
+    out.num_bins = static_cast<int>(spectrum.size());
+    out.window_size = spec_cfg.window_size;
+    out.bin_hz = static_cast<float>(frame.sample_rate) / static_cast<float>(spec_cfg.window_size);
+    out.sample_rate = frame.sample_rate;
+    out.window = spec_cfg.window;
+    out.power_spectrum = spec_cfg.power_spectrum;
+    out.timestamp_ms = timestamp_ms;
+    spectrum_cb_(out, spectrum_ud_);
   }
 };
 
