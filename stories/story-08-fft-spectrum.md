@@ -15,4 +15,4 @@
 - ✔ [7] 与节流策略协同，控制推送频率。
 
 ## 完成标准（DoD）
-- ✖ [8] gtest/Dart Widget 测试通过；性能 smoke 通过。
+- ✔ [8] gtest/Dart Widget 测试通过；性能 smoke 通过。
