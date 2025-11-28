@@ -51,8 +51,14 @@ class AudioEngineStub : public AudioEngine {
     throttle_cfg.max_fps = cfg_.pcm_max_fps;
     throttle_cfg.max_pending = cfg_.pcm_max_pending;
     throttler_ = std::make_unique<PcmThrottler>(throttle_cfg);
+    PcmThrottleConfig spectrum_cfg;
+    spectrum_cfg.max_fps = cfg_.spectrum_max_fps > 0 ? cfg_.spectrum_max_fps : cfg_.pcm_max_fps;
+    spectrum_cfg.max_pending =
+        cfg_.spectrum_max_pending > 0 ? cfg_.spectrum_max_pending : cfg_.pcm_max_pending;
+    spectrum_throttler_ = std::make_unique<PcmThrottler>(spectrum_cfg);
     pcm_sequence_.store(0);
     pcm_timestamp_ms_.store(0);
+    spectrum_sequence_.store(0);
 
     initialized_ = true;
     loaded_ = false;
@@ -165,8 +171,10 @@ class AudioEngineStub : public AudioEngine {
   std::atomic<bool> feeder_running_{false};
   std::atomic<bool> playing_{false};
   std::unique_ptr<PcmThrottler> throttler_;
+  std::unique_ptr<PcmThrottler> spectrum_throttler_;
   std::atomic<uint32_t> pcm_sequence_{0};
   std::atomic<int64_t> pcm_timestamp_ms_{0};
+  std::atomic<uint32_t> spectrum_sequence_{0};
 
   void EnsureDecoder() {
 #ifdef SW_ENABLE_FFMPEG
@@ -231,6 +239,7 @@ class AudioEngineStub : public AudioEngine {
           auto outs = throttler_->Push(in, in.timestamp_ms);
           for (const auto& o : outs) {
             if (o.dropped) {
+              MaybeEmitSpectrum(/*frame=*/std::nullopt, o.timestamp_ms);
               continue;
             }
             PcmFrame frame;
@@ -274,35 +283,49 @@ class AudioEngineStub : public AudioEngine {
     StopPlayback();
   }
 
-  void MaybeEmitSpectrum(const PcmFrame& frame, int64_t timestamp_ms) {
-    if (!spectrum_cb_) return;
-    const int samples_per_channel = frame.num_frames;
-    if (frame.num_channels <= 0 || samples_per_channel <= 0) return;
+  void MaybeEmitSpectrum(std::optional<PcmFrame> frame_opt, int64_t timestamp_ms) {
+    if (!spectrum_cb_ || !spectrum_throttler_) return;
+    const uint32_t seq = spectrum_sequence_.fetch_add(1) + 1;
+    PcmThrottleInput in;
+    in.sequence = seq;
+    in.timestamp_ms = timestamp_ms;
+    in.num_frames = frame_opt ? frame_opt->num_frames : 0;
+    in.num_channels = frame_opt ? frame_opt->num_channels : 0;
 
-    SpectrumConfig spec_cfg = cfg_.spectrum_cfg;
-    if (spec_cfg.window_size <= 0 || spec_cfg.window_size > samples_per_channel) {
-      spec_cfg.window_size = samples_per_channel;
+    const auto outs = spectrum_throttler_->Push(in, timestamp_ms);
+    for (const auto& o : outs) {
+      if (o.dropped || !frame_opt) {
+        continue;
+      }
+      const PcmFrame& frame = *frame_opt;
+      const int samples_per_channel = frame.num_frames;
+      if (frame.num_channels <= 0 || samples_per_channel <= 0) continue;
+
+      SpectrumConfig spec_cfg = cfg_.spectrum_cfg;
+      if (spec_cfg.window_size <= 0 || spec_cfg.window_size > samples_per_channel) {
+        spec_cfg.window_size = samples_per_channel;
+      }
+
+      std::vector<float> mono(static_cast<size_t>(spec_cfg.window_size));
+      for (int i = 0; i < spec_cfg.window_size; ++i) {
+        mono[static_cast<size_t>(i)] = frame.data[i * frame.num_channels];
+      }
+
+      auto spectrum = ComputeSpectrum(mono, frame.sample_rate, spec_cfg);
+      if (spectrum.empty()) continue;
+
+      SpectrumFrame out;
+      out.bins = spectrum.data();
+      out.num_bins = static_cast<int>(spectrum.size());
+      out.window_size = spec_cfg.window_size;
+      out.bin_hz = static_cast<float>(frame.sample_rate) /
+                   static_cast<float>(spec_cfg.window_size);
+      out.sample_rate = frame.sample_rate;
+      out.window = spec_cfg.window;
+      out.power_spectrum = spec_cfg.power_spectrum;
+      out.timestamp_ms = o.timestamp_ms;
+      spectrum_cb_(out, spectrum_ud_);
     }
-
-    // 提取单声道数据用于 FFT（取第 1 个声道）。
-    std::vector<float> mono(static_cast<size_t>(spec_cfg.window_size));
-    for (int i = 0; i < spec_cfg.window_size; ++i) {
-      mono[static_cast<size_t>(i)] = frame.data[i * frame.num_channels];
-    }
-
-    auto spectrum = ComputeSpectrum(mono, frame.sample_rate, spec_cfg);
-    if (spectrum.empty()) return;
-
-    SpectrumFrame out;
-    out.bins = spectrum.data();
-    out.num_bins = static_cast<int>(spectrum.size());
-    out.window_size = spec_cfg.window_size;
-    out.bin_hz = static_cast<float>(frame.sample_rate) / static_cast<float>(spec_cfg.window_size);
-    out.sample_rate = frame.sample_rate;
-    out.window = spec_cfg.window;
-    out.power_spectrum = spec_cfg.power_spectrum;
-    out.timestamp_ms = timestamp_ms;
-    spectrum_cb_(out, spectrum_ud_);
   }
 };
 

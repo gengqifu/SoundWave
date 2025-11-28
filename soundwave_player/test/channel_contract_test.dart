@@ -35,7 +35,9 @@ void main() {
           channels: 2,
           pcmMaxFps: 30,
           pcmFramesPerPush: 64,
-          pcmMaxPending: 5));
+          pcmMaxPending: 5,
+          spectrumMaxFps: 20,
+          spectrumMaxPending: 3));
 
       expect(calls, hasLength(1));
       final call = calls.first;
@@ -50,6 +52,8 @@ void main() {
             'pcmMaxFps': 30,
             'pcmFramesPerPush': 64,
             'pcmMaxPending': 5,
+            'spectrumMaxFps': 20,
+            'spectrumMaxPending': 3,
           }
         },
       );
