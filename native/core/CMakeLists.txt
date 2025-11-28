@@ -20,12 +20,11 @@ add_library(soundwave_core STATIC
   src/pcm_throttler.cpp
   src/fft_spectrum.cpp
   third_party/kissfft/kiss_fft.c
-  third_party/kissfft/tools/kiss_fftr.c
+  third_party/kissfft/kiss_fftr.c
 )
 target_include_directories(soundwave_core PUBLIC include)
 target_include_directories(soundwave_core PUBLIC
   third_party/kissfft
-  third_party/kissfft/tools
 )
 
 if(SW_ENABLE_FFMPEG)
