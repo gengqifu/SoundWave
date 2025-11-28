@@ -8,6 +8,7 @@
 #include <atomic>
 #include <chrono>
 #include <memory>
+#include <optional>
 #include <string>
 #include <thread>
 #include <vector>
@@ -214,17 +215,42 @@ class AudioEngineStub : public AudioEngine {
       return;
     }
     feeder_thread_ = std::thread([this]() {
-      const size_t frames = static_cast<size_t>(
+      PcmBuffer pcm_buffer;
+      const size_t target_frames = static_cast<size_t>(
           cfg_.pcm_frames_per_push > 0 ? cfg_.pcm_frames_per_push : cfg_.frames_per_buffer);
-      std::vector<float> silence(frames * static_cast<size_t>(cfg_.channels), 0.0f);
-      const int64_t frame_duration_ms =
-          static_cast<int64_t>((frames * 1000) / static_cast<size_t>(cfg_.sample_rate));
       while (feeder_running_.load()) {
-        if (!ring_buffer_) {
+        if (!ring_buffer_ || !decoder_) {
           std::this_thread::sleep_for(std::chrono::milliseconds(1));
           continue;
         }
-        size_t wrote = ring_buffer_->Write(silence.data(), frames);
+
+        bool has_frame = decoder_->Read(pcm_buffer);
+        if (!has_frame) {
+          if (decoder_->last_status() != Status::kOk) {
+            feeder_running_.store(false);
+            break;
+          }
+          // Stub/EOF：回退填充静音以驱动时钟。
+          pcm_buffer.sample_rate = cfg_.sample_rate;
+          pcm_buffer.channels = cfg_.channels;
+          pcm_buffer.interleaved.assign(target_frames * static_cast<size_t>(cfg_.channels), 0.0f);
+        }
+        if (pcm_buffer.channels <= 0) {
+          pcm_buffer.channels = cfg_.channels;
+        }
+        if (pcm_buffer.sample_rate <= 0) {
+          pcm_buffer.sample_rate = cfg_.sample_rate;
+        }
+        size_t frames = pcm_buffer.interleaved.size() / static_cast<size_t>(pcm_buffer.channels);
+        if (frames == 0) {
+          continue;
+        }
+        // Limit per-push frames to target; excess remains in buffer to be read next tick.
+        if (frames > target_frames) {
+          frames = target_frames;
+        }
+        size_t wrote =
+            ring_buffer_->Write(pcm_buffer.interleaved.data(), static_cast<size_t>(frames));
         if (wrote == 0) {
           std::this_thread::sleep_for(std::chrono::milliseconds(1));
           continue;
@@ -235,7 +261,7 @@ class AudioEngineStub : public AudioEngine {
           in.sequence = pcm_sequence_.fetch_add(1) + 1;
           in.timestamp_ms = pcm_timestamp_ms_.load();
           in.num_frames = static_cast<int>(frames);
-          in.num_channels = cfg_.channels;
+          in.num_channels = pcm_buffer.channels;
           auto outs = throttler_->Push(in, in.timestamp_ms);
           for (const auto& o : outs) {
             if (o.dropped) {
@@ -243,17 +269,21 @@ class AudioEngineStub : public AudioEngine {
               continue;
             }
             PcmFrame frame;
-            frame.data = silence.data();
+            frame.data = pcm_buffer.interleaved.data();
             frame.num_frames = in.num_frames;
             frame.num_channels = in.num_channels;
-            frame.sample_rate = cfg_.sample_rate;
+            frame.sample_rate = pcm_buffer.sample_rate;
             frame.timestamp_ms = o.timestamp_ms;
             pcm_cb_(frame, pcm_ud_);
             MaybeEmitSpectrum(frame, o.timestamp_ms);
           }
         }
+        const int64_t frame_duration_ms =
+            static_cast<int64_t>((frames * 1000) / static_cast<size_t>(pcm_buffer.sample_rate));
         pcm_timestamp_ms_.fetch_add(frame_duration_ms);
       }
+      playing_ = false;
+      EmitState(PlaybackState::kStopped, Status::kOk);
     });
   }
 
