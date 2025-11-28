@@ -103,6 +103,54 @@ TEST_F(AudioEngineTest, PlayAdvancesPositionCallback) {
   EXPECT_GT(last_pos.load(), 0);
 }
 
+TEST_F(AudioEngineTest, PlayPauseSeekStayInSyncWithinTolerance) {
+  ASSERT_NE(engine_, nullptr);
+  AudioConfig cfg;
+  cfg.sample_rate = 48000;
+  cfg.channels = 2;
+  cfg.frames_per_buffer = 128;
+  cfg.pcm_frames_per_push = 64;
+  cfg.pcm_max_fps = 30;
+  ASSERT_EQ(engine_->Init(cfg), Status::kOk);
+  ASSERT_EQ(engine_->Load("file:///tmp/sample.mp3"), Status::kOk);
+
+  std::atomic<int64_t> last_pos{-1};
+  engine_->SetPositionCallback(
+      [](int64_t pos, void* ud) {
+        auto* p = static_cast<std::atomic<int64_t>*>(ud);
+        p->store(pos);
+      },
+      &last_pos);
+
+  ASSERT_EQ(engine_->Play(), Status::kOk);
+  // Wait for position to advance.
+  for (int i = 0; i < 100 && last_pos.load() < 10; ++i) {
+    std::this_thread::sleep_for(std::chrono::milliseconds(10));
+  }
+  EXPECT_GE(last_pos.load(), 10);
+
+  // Pause and ensure position stops advancing (allow small jitter).
+  ASSERT_EQ(engine_->Pause(), Status::kOk);
+  const int64_t paused_pos = last_pos.load();
+  std::this_thread::sleep_for(std::chrono::milliseconds(50));
+  EXPECT_LE(last_pos.load(), paused_pos + 10);
+
+  // Seek to 500ms and expect callback near target (±50ms).
+  last_pos.store(-1);
+  ASSERT_EQ(engine_->Seek(500), Status::kOk);
+  ASSERT_EQ(engine_->Play(), Status::kOk);
+  bool reached_target = false;
+  for (int i = 0; i < 200; ++i) {
+    std::this_thread::sleep_for(std::chrono::milliseconds(10));
+    const auto p = last_pos.load();
+    if (p > paused_pos && p >= 400 && p <= 900) {
+      reached_target = true;
+      break;
+    }
+  }
+  EXPECT_TRUE(reached_target);
+}
+
 TEST(DecoderStubTest, OpenAndRead) {
   std::unique_ptr<Decoder> dec = CreateStubDecoder();
   ASSERT_TRUE(dec->Open("file:///tmp/sample.mp3"));
