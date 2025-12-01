@@ -53,5 +53,44 @@ void main() {
       buffer.dispose();
       controller.close();
     });
+
+    testWidgets('resets when timestamps roll back (seek)', (tester) async {
+      final controller = StreamController<Map<String, Object?>>.broadcast();
+      final buffer = PcmBuffer(stream: controller.stream, maxFrames: 10);
+      int drainedSamples = 0;
+
+      await tester.pumpWidget(MaterialApp(
+        home: WaveformStreamView(
+          buffer: buffer,
+          frameInterval: const Duration(milliseconds: 10),
+          maxFramesPerTick: 5,
+          onDrain: (res) {
+            for (final f in res.frames) {
+              drainedSamples += f.samples.length;
+            }
+          },
+        ),
+      ));
+
+      controller.add(<String, Object?>{
+        'sequence': 1,
+        'timestampMs': 50,
+        'samples': <double>[0.1, -0.1],
+      });
+      await tester.pump(const Duration(milliseconds: 15));
+      expect(drainedSamples, 2);
+
+      // Timestamp rolls back simulating seek; should still be accepted.
+      controller.add(<String, Object?>{
+        'sequence': 2,
+        'timestampMs': 10,
+        'samples': <double>[0.2, -0.2, 0.3],
+      });
+      await tester.pump(const Duration(milliseconds: 15));
+      expect(drainedSamples, 5);
+
+      buffer.dispose();
+      controller.close();
+    });
   });
 }

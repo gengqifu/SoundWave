@@ -55,6 +55,15 @@ class _SpectrumStreamViewState extends State<SpectrumStreamView> {
   }
 
   @override
+  void didUpdateWidget(covariant SpectrumStreamView oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.buffer.length < oldWidget.buffer.length) {
+      _bins = const [];
+      _lastTimestampMs = -1;
+    }
+  }
+
+  @override
   void dispose() {
     _timer?.cancel();
     super.dispose();

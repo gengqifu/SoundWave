@@ -94,9 +94,31 @@ void main() {
       await Future<void>.delayed(const Duration(milliseconds: 5));
 
       final pcmRes = controller.pcmBuffer.drain(10);
-      expect(pcmRes.frames.map((f) => f.sequence), [1]);
+      expect(pcmRes.frames.map((f) => f.sequence), [2]);
       final specRes = controller.spectrumBuffer.drain(10);
       expect(specRes.frames.single.bins, [0.3, 0.4]);
+    });
+
+    test('seek resets buffers to accept earlier timestamps', () async {
+      await controller.init(
+          const SoundwaveConfig(sampleRate: 48000, bufferSize: 1024, channels: 2));
+      platform.emitPcm(<String, Object?>{
+        'sequence': 1,
+        'timestampMs': 100,
+        'samples': <double>[0.1],
+      });
+      await Future<void>.delayed(const Duration(milliseconds: 5));
+      expect(controller.pcmBuffer.drain(10).frames, isNotEmpty);
+
+      await controller.seek(const Duration(milliseconds: 10));
+      platform.emitPcm(<String, Object?>{
+        'sequence': 2,
+        'timestampMs': 10, // earlier than previous, should be accepted after reset.
+        'samples': <double>[0.2],
+      });
+      await Future<void>.delayed(const Duration(milliseconds: 5));
+      final res = controller.pcmBuffer.drain(10);
+      expect(res.frames.map((f) => f.sequence), [2]);
     });
   });
 }

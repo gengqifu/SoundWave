@@ -52,9 +52,11 @@ class AudioController {
   Future<void> load(String source, {Map<String, Object?>? headers}) async {
     _ensureInitialized();
     _emit(_state.copyWith(isBuffering: true, error: null));
-    await _guardPlatformCall(
-        () => _platform.load(source, headers: headers),
-        onSuccess: () => _emit(_state.copyWith(isBuffering: false)),
+    await _guardPlatformCall(() => _platform.load(source, headers: headers),
+        onSuccess: () {
+          _resetBuffers();
+          _emit(_state.copyWith(isBuffering: false));
+        },
         clearBufferingOnError: true);
   }
 
@@ -75,18 +77,24 @@ class AudioController {
   Future<void> stop() async {
     _ensureInitialized();
     await _guardPlatformCall(() => _platform.stop(),
-        onSuccess: () => _emit(_state.copyWith(
-              isPlaying: false,
-              isBuffering: false,
-              position: Duration.zero,
-              bufferedPosition: Duration.zero,
-            )));
+        onSuccess: () {
+          _resetBuffers();
+          _emit(_state.copyWith(
+            isPlaying: false,
+            isBuffering: false,
+            position: Duration.zero,
+            bufferedPosition: Duration.zero,
+          ));
+        });
   }
 
   Future<void> seek(Duration position) async {
     _ensureInitialized();
     await _guardPlatformCall(() => _platform.seek(position),
-        onSuccess: () => _emit(_state.copyWith(position: position, error: null)));
+        onSuccess: () {
+          _resetBuffers();
+          _emit(_state.copyWith(position: position, error: null));
+        });
   }
 
   void dispose() {
@@ -166,5 +174,10 @@ class AudioController {
           .toList(growable: false);
     }
     return null;
+  }
+
+  void _resetBuffers() {
+    _pcmBuffer?.reset();
+    _spectrumBuffer?.reset();
   }
 }

@@ -38,13 +38,15 @@ class PcmBuffer {
       return;
     }
     if (ts < _lastTimestampMs) {
-      // 丢弃时间戳倒退的帧，避免时间基漂移。
-      _droppedFromStream += droppedBefore > 0 ? droppedBefore : 1;
-      return;
+      // 认为是 seek/重置，清空队列与计数并接受新时间基。
+      _queue.clear();
+      _droppedFromStream = 0;
+      _lastTimestampMs = ts;
+    } else {
+      _lastTimestampMs = ts;
     }
     final samples = samplesRaw.whereType<num>().map((n) => n.toDouble()).toList(growable: false);
     _droppedFromStream += droppedBefore;
-    _lastTimestampMs = ts;
     _queue.push(PcmFrame(sequence: seq, timestampMs: ts, samples: samples));
   }
 
@@ -56,11 +58,16 @@ class PcmBuffer {
     return PcmPullResult(res.frames, droppedBefore: totalDropped);
   }
 
+  void reset() {
+    _queue.clear();
+    _droppedFromStream = 0;
+    _lastTimestampMs = -1;
+  }
+
   int get length => _queue.length;
 
   void dispose() {
     _subscription.cancel();
-    _queue.clear();
-    _lastTimestampMs = -1;
+    reset();
   }
 }

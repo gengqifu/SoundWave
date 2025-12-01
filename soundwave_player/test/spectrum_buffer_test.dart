@@ -39,7 +39,7 @@ void main() {
       expect(res.droppedBefore, 2);
     });
 
-    test('drops out-of-order timestamps', () async {
+    test('timestamp rollback resets queue', () async {
       controller.add(<String, Object?>{
         'sequence': 1,
         'timestampMs': 10,
@@ -48,15 +48,15 @@ void main() {
       });
       controller.add(<String, Object?>{
         'sequence': 2,
-        'timestampMs': 5, // out-of-order
+        'timestampMs': 5, // rollback
         'bins': <double>[0.4],
         'binHz': 20.0,
       });
       await Future<void>.delayed(Duration.zero);
 
       final res = buffer.drain(5);
-      expect(res.frames.map((f) => f.sequence), [1]);
-      expect(res.droppedBefore, 1);
+      expect(res.frames.map((f) => f.sequence), [2]);
+      expect(res.droppedBefore, 0);
     });
   });
 }

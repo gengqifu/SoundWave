@@ -78,7 +78,7 @@ void main() {
       expect(res.droppedBefore, 1); // one dropped due to overflow
     });
 
-    test('drops out-of-order timestamps to avoid time drift', () async {
+    test('timestamp rollback resets queue instead of dropping forever', () async {
       controller.add(<String, Object?>{
         'sequence': 1,
         'timestampMs': 20,
@@ -86,14 +86,14 @@ void main() {
       });
       controller.add(<String, Object?>{
         'sequence': 2,
-        'timestampMs': 10, // out-of-order, should be dropped.
+        'timestampMs': 10, // rollback (seek), should reset.
         'samples': <double>[0.5],
       });
       await Future<void>.delayed(Duration.zero);
 
       final res = buffer.drain(5);
-      expect(res.frames.map((f) => f.sequence), [1]);
-      expect(res.droppedBefore, 1);
+      expect(res.frames.map((f) => f.sequence), [2]); // reset to new base
+      expect(res.droppedBefore, 0);
     });
   });
 }

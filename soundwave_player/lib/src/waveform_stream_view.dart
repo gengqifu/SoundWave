@@ -65,6 +65,16 @@ class _WaveformStreamViewState extends State<WaveformStreamView> {
   }
 
   @override
+  void didUpdateWidget(covariant WaveformStreamView oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    // 若源 buffer 被外部重置（长度变小或时间基回退），清空缓存和时间戳。
+    if (widget.buffer.length < oldWidget.buffer.length) {
+      _cache.clear();
+      _lastTimestampMs = -1;
+    }
+  }
+
+  @override
   void dispose() {
     _timer?.cancel();
     super.dispose();
