@@ -155,6 +155,22 @@ class AudioController {
         isBuffering: true,
         error: (event['message'] as String?) ?? _state.error,
       ));
+    } else if (type == 'focusLost') {
+      final message = event['message'] as String? ?? 'Audio focus lost';
+      _emit(_state.copyWith(
+        isPlaying: false,
+        isBuffering: true,
+        error: message,
+      ));
+    } else if (type == 'resumedFromBackground') {
+      _emit(_state.copyWith(
+        isPlaying: true,
+        isBuffering: false,
+        position: _parseDuration(event['positionMs'], _state.position),
+        bufferedPosition:
+            _parseDuration(event['bufferedMs'], _state.bufferedPosition ?? Duration.zero),
+        error: null,
+      ));
     } else if (type == 'resumed') {
       _emit(_state.copyWith(
         isBuffering: false,
