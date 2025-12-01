@@ -4,6 +4,8 @@ import 'soundwave_config.dart';
 import 'audio_state.dart';
 import 'soundwave_exception.dart';
 import 'soundwave_player.dart';
+import 'pcm_buffer.dart';
+import 'spectrum_buffer.dart';
 
 /// Dart 层控制器占位实现：封装 SoundwavePlayer，管理状态流。
 class AudioController {
@@ -13,6 +15,8 @@ class AudioController {
   final SoundwavePlayer _platform;
   bool _initialized = false;
   StreamSubscription<dynamic>? _stateSubscription;
+  PcmBuffer? _pcmBuffer;
+  SpectrumBuffer? _spectrumBuffer;
 
   /// 状态流（后续实现）。
   Stream<AudioState> get states => _stateController.stream;
@@ -22,6 +26,15 @@ class AudioController {
 
   AudioState _state = AudioState.initial();
   AudioState get state => _state;
+  PcmBuffer get pcmBuffer {
+    _ensureInitialized();
+    return _pcmBuffer!;
+  }
+
+  SpectrumBuffer get spectrumBuffer {
+    _ensureInitialized();
+    return _spectrumBuffer!;
+  }
 
   Future<void> init(SoundwaveConfig config) async {
     if (_initialized) {
@@ -30,6 +43,8 @@ class AudioController {
 
     await _platform.init(config);
     _stateSubscription = _platform.stateEvents.listen(_handlePlatformEvent);
+    _pcmBuffer = PcmBuffer(stream: _platform.pcmEvents, maxFrames: 60);
+    _spectrumBuffer = SpectrumBuffer(stream: _platform.spectrumEvents, maxFrames: 60);
     _initialized = true;
     _emit(_state);
   }
@@ -76,6 +91,8 @@ class AudioController {
 
   void dispose() {
     _stateSubscription?.cancel();
+    _pcmBuffer?.dispose();
+    _spectrumBuffer?.dispose();
     _stateController.close();
   }
 

@@ -38,6 +38,7 @@ class WaveformStreamView extends StatefulWidget {
 class _WaveformStreamViewState extends State<WaveformStreamView> {
   late WaveformCache _cache;
   Timer? _timer;
+  int _lastTimestampMs = -1;
 
   @override
   void initState() {
@@ -48,8 +49,15 @@ class _WaveformStreamViewState extends State<WaveformStreamView> {
       if (res.frames.isNotEmpty || res.droppedBefore > 0) {
         widget.onDrain?.call(res);
         setState(() {
+          final ts = res.frames.isNotEmpty ? res.frames.last.timestampMs : -1;
+          if (ts >= 0 && ts < _lastTimestampMs) {
+            return;
+          }
           for (final f in res.frames) {
             _cache.addSamples(f.samples);
+          }
+          if (ts >= 0) {
+            _lastTimestampMs = ts;
           }
         });
       }

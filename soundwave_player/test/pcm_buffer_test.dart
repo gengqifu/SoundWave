@@ -77,5 +77,23 @@ void main() {
       expect(res.frames.map((f) => f.sequence).toList(), [2, 3]);
       expect(res.droppedBefore, 1); // one dropped due to overflow
     });
+
+    test('drops out-of-order timestamps to avoid time drift', () async {
+      controller.add(<String, Object?>{
+        'sequence': 1,
+        'timestampMs': 20,
+        'samples': <double>[0.4],
+      });
+      controller.add(<String, Object?>{
+        'sequence': 2,
+        'timestampMs': 10, // out-of-order, should be dropped.
+        'samples': <double>[0.5],
+      });
+      await Future<void>.delayed(Duration.zero);
+
+      final res = buffer.drain(5);
+      expect(res.frames.map((f) => f.sequence), [1]);
+      expect(res.droppedBefore, 1);
+    });
   });
 }

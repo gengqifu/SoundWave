@@ -1,23 +1,23 @@
 import 'dart:async';
 
-import 'pcm_frame.dart';
-import 'pcm_queue.dart';
+import 'spectrum_frame.dart';
+import 'spectrum_queue.dart';
 
-class PcmPullResult {
-  const PcmPullResult(this.frames, {this.droppedBefore = 0});
+class SpectrumPullResult {
+  const SpectrumPullResult(this.frames, {this.droppedBefore = 0});
 
-  final List<PcmFrame> frames;
+  final List<SpectrumFrame> frames;
   final int droppedBefore;
 }
 
-/// PCM 事件缓冲/背压：订阅 PCM 流，排队到达的帧，支持限量读取并合并丢弃计数。
-class PcmBuffer {
-  PcmBuffer({required Stream<dynamic> stream, int maxFrames = 30})
-      : _queue = PcmQueue(maxFrames: maxFrames) {
+/// 频谱事件缓冲：订阅 Spectrum 流，过滤非法/乱序数据，支持限量读取。
+class SpectrumBuffer {
+  SpectrumBuffer({required Stream<dynamic> stream, int maxFrames = 30})
+      : _queue = SpectrumQueue(maxFrames: maxFrames) {
     _subscription = stream.listen(_handleEvent);
   }
 
-  final PcmQueue _queue;
+  final SpectrumQueue _queue;
   late final StreamSubscription<dynamic> _subscription;
   int _droppedFromStream = 0;
   int _lastTimestampMs = -1;
@@ -27,33 +27,31 @@ class PcmBuffer {
     final droppedBefore = (event['droppedBefore'] as num?)?.toInt() ?? 0;
     final dropped = (event['dropped'] as bool?) ?? false;
     if (dropped) {
-      // 直接累计丢弃计数。
       _droppedFromStream += droppedBefore > 0 ? droppedBefore : 1;
       return;
     }
     final seq = (event['sequence'] as num?)?.toInt();
     final ts = (event['timestampMs'] as num?)?.toInt();
-    final samplesRaw = event['samples'];
-    if (seq == null || ts == null || samplesRaw is! List) {
+    final binsRaw = event['bins'];
+    final binHz = (event['binHz'] as num?)?.toDouble() ?? 0;
+    if (seq == null || ts == null || binsRaw is! List) {
       return;
     }
     if (ts < _lastTimestampMs) {
-      // 丢弃时间戳倒退的帧，避免时间基漂移。
       _droppedFromStream += droppedBefore > 0 ? droppedBefore : 1;
       return;
     }
-    final samples = samplesRaw.whereType<num>().map((n) => n.toDouble()).toList(growable: false);
+    final bins = binsRaw.whereType<num>().map((n) => n.toDouble()).toList(growable: false);
     _droppedFromStream += droppedBefore;
     _lastTimestampMs = ts;
-    _queue.push(PcmFrame(sequence: seq, timestampMs: ts, samples: samples));
+    _queue.push(SpectrumFrame(sequence: seq, timestampMs: ts, bins: bins, binHz: binHz));
   }
 
-  /// 限量取出帧，并合并流侧与队列侧的丢弃计数。
-  PcmPullResult drain(int maxCount) {
+  SpectrumPullResult drain(int maxCount) {
     final res = _queue.take(maxCount);
     final totalDropped = res.droppedBefore + _droppedFromStream;
     _droppedFromStream = 0;
-    return PcmPullResult(res.frames, droppedBefore: totalDropped);
+    return SpectrumPullResult(res.frames, droppedBefore: totalDropped);
   }
 
   int get length => _queue.length;

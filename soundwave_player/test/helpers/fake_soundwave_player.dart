@@ -8,6 +8,10 @@ class FakePlatform extends SoundwavePlayer {
   bool shouldThrow;
   final StreamController<Map<String, Object?>> _stateController =
       StreamController<Map<String, Object?>>.broadcast();
+  final StreamController<Map<String, Object?>> _pcmController =
+      StreamController<Map<String, Object?>>.broadcast();
+  final StreamController<Map<String, Object?>> _spectrumController =
+      StreamController<Map<String, Object?>>.broadcast();
 
   List<String> calls = [];
 
@@ -47,12 +51,26 @@ class FakePlatform extends SoundwavePlayer {
 
   @override
   Stream<dynamic> get stateEvents => _stateController.stream;
+  @override
+  Stream<dynamic> get pcmEvents => _pcmController.stream;
+  @override
+  Stream<dynamic> get spectrumEvents => _spectrumController.stream;
 
   void emitState(Map<String, Object?> event) {
     _stateController.add(event);
   }
 
+  void emitPcm(Map<String, Object?> event) {
+    _pcmController.add(event);
+  }
+
+  void emitSpectrum(Map<String, Object?> event) {
+    _spectrumController.add(event);
+  }
+
   void dispose() {
     _stateController.close();
+    _pcmController.close();
+    _spectrumController.close();
   }
 }

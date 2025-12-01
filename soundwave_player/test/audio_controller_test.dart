@@ -70,5 +70,33 @@ void main() {
       expect(controller.state.isBuffering, isFalse);
       expect(controller.state.error, contains('load failed'));
     });
+
+    test('exposes pcm/spectrum buffers and drains platform events by timestamp order', () async {
+      await controller.init(
+          const SoundwaveConfig(sampleRate: 48000, bufferSize: 1024, channels: 2));
+
+      platform.emitPcm(<String, Object?>{
+        'sequence': 1,
+        'timestampMs': 10,
+        'samples': <double>[0.1],
+      });
+      platform.emitPcm(<String, Object?>{
+        'sequence': 2,
+        'timestampMs': 5, // out-of-order, should be dropped.
+        'samples': <double>[0.2],
+      });
+      platform.emitSpectrum(<String, Object?>{
+        'sequence': 1,
+        'timestampMs': 15,
+        'bins': <double>[0.3, 0.4],
+        'binHz': 50.0,
+      });
+      await Future<void>.delayed(const Duration(milliseconds: 5));
+
+      final pcmRes = controller.pcmBuffer.drain(10);
+      expect(pcmRes.frames.map((f) => f.sequence), [1]);
+      final specRes = controller.spectrumBuffer.drain(10);
+      expect(specRes.frames.single.bins, [0.3, 0.4]);
+    });
   });
 }
