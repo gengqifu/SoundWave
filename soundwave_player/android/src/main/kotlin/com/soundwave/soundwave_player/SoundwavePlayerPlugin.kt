@@ -2,12 +2,16 @@ package com.soundwave.soundwave_player
 
 import android.content.Context
 import android.media.AudioManager
+import android.net.Uri
 import androidx.media3.common.MediaItem
 import androidx.media3.common.PlaybackException
 import androidx.media3.common.Player
+import androidx.media3.datasource.DataSource
+import androidx.media3.datasource.DefaultDataSource
 import androidx.media3.datasource.DefaultHttpDataSource
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.exoplayer.hls.HlsMediaSource
+import androidx.media3.exoplayer.source.ProgressiveMediaSource
 import io.flutter.embedding.engine.plugins.FlutterPlugin
 import io.flutter.embedding.engine.plugins.FlutterPlugin.FlutterPluginBinding
 import io.flutter.plugin.common.EventChannel
@@ -171,7 +175,9 @@ class SoundwavePlayerPlugin : FlutterPlugin, MethodCallHandler, EventChannel.Str
         val rangeStart = (range["start"] as? Number)?.toLong()
         val rangeEnd = (range["end"] as? Number)?.toLong()
 
-        val dsFactory = httpFactory ?: DefaultHttpDataSource.Factory()
+        val uri = Uri.parse(source)
+        val dataSourceFactory: DataSource.Factory =
+            DefaultDataSource.Factory(context, httpFactory ?: DefaultHttpDataSource.Factory())
         val mediaItemBuilder = MediaItem.Builder()
             .setUri(source)
         if (headers.isNotEmpty()) {
@@ -188,8 +194,11 @@ class SoundwavePlayerPlugin : FlutterPlugin, MethodCallHandler, EventChannel.Str
             )
         }
         val mediaItem = mediaItemBuilder.build()
-        val sourceFactory = HlsMediaSource.Factory(dsFactory)
-        val mediaSource = sourceFactory.createMediaSource(mediaItem)
+        val mediaSource = if (uri.toString().endsWith(".m3u8", ignoreCase = true)) {
+            HlsMediaSource.Factory(dataSourceFactory).createMediaSource(mediaItem)
+        } else {
+            ProgressiveMediaSource.Factory(dataSourceFactory).createMediaSource(mediaItem)
+        }
 
         val exo = player ?: run {
             result.error("invalid_state", "Player not initialized", null); return
