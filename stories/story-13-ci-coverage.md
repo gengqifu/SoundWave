@@ -4,7 +4,7 @@
 配置 CI 流程运行 `flutter analyze/test`、C++ gtest、格式化检查，生成覆盖率报告并设定阈值，作为合并门禁。当前聚焦本地播放相关代码，Story10 流式用例暂跳过或标记允许失败。
 
 ## 测试优先（TDD）
-- ✖ [1] 先编写 CI 流程的验证用例：人为降低覆盖率触发失败，格式化失败触发失败（本地脚本/Make 目标模拟）。
+- ✔ [1] 先编写 CI 流程的验证用例：人为降低覆盖率触发失败，格式化失败触发失败（本地脚本/Make 目标模拟，见 `scripts/ci_fail_format.sh`）。
 - ✔ [2] 本地脚本模拟 CI 关键步骤，确保可复现（`flutter analyze/test`、native `ctest`；提供一键脚本 `scripts/ci_local.sh`）。
 
 ## 开发任务
