@@ -1,12 +1,11 @@
-import 'dart:async';
-
 import 'package:flutter_test/flutter_test.dart';
 import 'package:soundwave_player/soundwave_player.dart';
 
 import 'helpers/fake_soundwave_player.dart';
 
-@Skip('Story10 streaming deferred')
 void main() {
+  const skipStreaming = true;
+
   group('Streaming perf smoke', () {
     late FakePlatform platform;
     late AudioController controller;
@@ -50,6 +49,6 @@ void main() {
 
       expect(pcmRes.frames, isNotEmpty);
       expect(specRes.frames, isNotEmpty);
-    });
+    }, skip: skipStreaming);
   });
 }
