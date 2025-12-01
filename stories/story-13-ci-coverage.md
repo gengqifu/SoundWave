@@ -5,7 +5,7 @@
 
 ## 测试优先（TDD）
 - ✖ [1] 先编写 CI 流程的验证用例：人为降低覆盖率触发失败，格式化失败触发失败（本地脚本/Make 目标模拟）。
-- ✖ [2] 本地脚本模拟 CI 关键步骤，确保可复现（`flutter analyze/test`、native `ctest`；提供一键 `make ci`）。
+- ✔ [2] 本地脚本模拟 CI 关键步骤，确保可复现（`flutter analyze/test`、native `ctest`；提供一键脚本 `scripts/ci_local.sh`）。
 
 ## 开发任务
 - ✖ [3] CI 配置（GitHub Actions）：Flutter analyze/test（跳过 Story10 流式用例）、CMake+gtest、clang-format/dart format 检查，缓存 Flutter/.pub-cache/CMake。
