@@ -10,6 +10,8 @@ class SoundwaveConfig {
   final int? connectTimeoutMs;
   final int? readTimeoutMs;
   final bool? enableRangeRequests;
+  final int? ringBufferMs;
+  final bool? enableSkiaTracing;
 
   const SoundwaveConfig({
     required this.sampleRate,
@@ -23,6 +25,8 @@ class SoundwaveConfig {
     this.connectTimeoutMs,
     this.readTimeoutMs,
     this.enableRangeRequests,
+    this.ringBufferMs,
+    this.enableSkiaTracing,
   });
 
   void validate() {
@@ -56,6 +60,9 @@ class SoundwaveConfig {
     if (readTimeoutMs != null && readTimeoutMs! <= 0) {
       throw ArgumentError.value(readTimeoutMs, 'readTimeoutMs', 'must be > 0');
     }
+    if (ringBufferMs != null && ringBufferMs! <= 0) {
+      throw ArgumentError.value(ringBufferMs, 'ringBufferMs', 'must be > 0');
+    }
   }
 
   Map<String, Object?> toMap() {
@@ -71,12 +78,18 @@ class SoundwaveConfig {
     if (network.isNotEmpty) {
       map['network'] = network;
     }
+    final playback = <String, Object?>{};
+    if (ringBufferMs != null) playback['ringBufferMs'] = ringBufferMs;
+    if (playback.isNotEmpty) {
+      map['playback'] = playback;
+    }
     final visualization = <String, Object?>{};
     if (pcmMaxFps != null) visualization['pcmMaxFps'] = pcmMaxFps;
     if (pcmFramesPerPush != null) visualization['pcmFramesPerPush'] = pcmFramesPerPush;
     if (pcmMaxPending != null) visualization['pcmMaxPending'] = pcmMaxPending;
     if (spectrumMaxFps != null) visualization['spectrumMaxFps'] = spectrumMaxFps;
     if (spectrumMaxPending != null) visualization['spectrumMaxPending'] = spectrumMaxPending;
+    if (enableSkiaTracing != null) visualization['enableSkiaTracing'] = enableSkiaTracing;
     if (visualization.isNotEmpty) {
       map['visualization'] = visualization;
     }

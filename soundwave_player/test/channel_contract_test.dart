@@ -40,7 +40,9 @@ void main() {
           spectrumMaxPending: 3,
           connectTimeoutMs: 3000,
           readTimeoutMs: 5000,
-          enableRangeRequests: true));
+          enableRangeRequests: true,
+          ringBufferMs: 300,
+          enableSkiaTracing: true));
 
       expect(calls, hasLength(1));
       final call = calls.first;
@@ -57,11 +59,15 @@ void main() {
             'pcmMaxPending': 5,
             'spectrumMaxFps': 20,
             'spectrumMaxPending': 3,
+            'enableSkiaTracing': true,
           },
           'network': <String, Object?>{
             'connectTimeoutMs': 3000,
             'readTimeoutMs': 5000,
             'enableRangeRequests': true,
+          },
+          'playback': <String, Object?>{
+            'ringBufferMs': 300,
           }
         },
       );
