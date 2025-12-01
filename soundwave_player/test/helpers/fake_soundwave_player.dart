@@ -3,9 +3,10 @@ import 'dart:async';
 import 'package:soundwave_player/soundwave_player.dart';
 
 class FakePlatform extends SoundwavePlayer {
-  FakePlatform({this.shouldThrow = false}) : super();
+  FakePlatform({this.shouldThrow = false, this.throwError}) : super();
 
   bool shouldThrow;
+  SoundwaveException? throwError;
   final StreamController<Map<String, Object?>> _stateController =
       StreamController<Map<String, Object?>>.broadcast();
   final StreamController<Map<String, Object?>> _pcmController =
@@ -24,7 +25,10 @@ class FakePlatform extends SoundwavePlayer {
   @override
   Future<void> load(String source, {Map<String, Object?>? headers}) async {
     calls.add('load');
-    if (shouldThrow) throw StateError('load failed');
+    if (shouldThrow) {
+      if (throwError != null) throw throwError!;
+      throw StateError('load failed');
+    }
   }
 
   @override

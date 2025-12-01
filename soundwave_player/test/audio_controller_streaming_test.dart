@@ -54,5 +54,14 @@ void main() {
       // Controller should remain usable after retry notification.
       await controller.play();
     });
+
+    test('404 or unsupported format surfaces error without crash', () async {
+      platform.shouldThrow = true;
+      platform.throwError = const SoundwaveException('http_404', 'Not Found', null);
+
+      expect(() => controller.load('https://example.com/missing.mp3'),
+          throwsA(isA<SoundwaveException>().having((e) => e.code, 'code', 'http_404')));
+      expect(controller.state.error, isNotNull);
+    });
   });
 }
