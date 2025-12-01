@@ -8,7 +8,7 @@
 - ✔ [2] Demo 自动化冒烟脚本（如 integration_test 驱动基础操作，占位，待环境准备），见 `example/integration_test/demo_smoke_test.dart`（全局 skip 占位）。
 
 ## 开发任务
-- ✖ [3] README：特性列表、安装、平台要求、快速开始代码片段、已知限制（注明流式暂缓）。
+- ✔ [3] README：特性列表、安装、平台要求、快速开始代码片段、已知限制（注明流式暂缓）。
 - ✖ [4] Demo 页面：完整 UI（播放控制、文件/URL 输入、波形/频谱展示），可运行。
 - ✖ [5] 截图/说明：关键界面、配置示例。
 - ✖ [6] Changelog/Release note 雏形。
