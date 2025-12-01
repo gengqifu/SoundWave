@@ -31,11 +31,18 @@ class _SpectrumStreamViewState extends State<SpectrumStreamView> {
   Timer? _timer;
   List<SpectrumBin> _bins = const [];
   int _lastTimestampMs = -1;
+  int _bufferVersion = 0;
 
   @override
   void initState() {
     super.initState();
+    _bufferVersion = widget.buffer.version;
     _timer = Timer.periodic(widget.frameInterval, (_) {
+      if (widget.buffer.version != _bufferVersion) {
+        _bins = const [];
+        _lastTimestampMs = -1;
+        _bufferVersion = widget.buffer.version;
+      }
       final res = widget.buffer.drain(widget.maxFramesPerTick);
       if (res.frames.isNotEmpty || res.droppedBefore > 0) {
         widget.onDrain?.call(res);
@@ -43,7 +50,8 @@ class _SpectrumStreamViewState extends State<SpectrumStreamView> {
           // 取最后一帧，保持与音频时间基同步。
           final last = res.frames.last;
           if (last.timestampMs < _lastTimestampMs) {
-            return;
+            _bins = const [];
+            _lastTimestampMs = -1;
           }
           setState(() {
             _bins = _toBins(last);

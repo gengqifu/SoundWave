@@ -39,19 +39,28 @@ class _WaveformStreamViewState extends State<WaveformStreamView> {
   late WaveformCache _cache;
   Timer? _timer;
   int _lastTimestampMs = -1;
+  int _bufferVersion = 0;
 
   @override
   void initState() {
     super.initState();
     _cache = WaveformCache(maxSamples: widget.maxSamples);
+    _bufferVersion = widget.buffer.version;
     _timer = Timer.periodic(widget.frameInterval, (_) {
+      // Detect external reset on same buffer instance.
+      if (widget.buffer.version != _bufferVersion) {
+        _cache.clear();
+        _lastTimestampMs = -1;
+        _bufferVersion = widget.buffer.version;
+      }
       final res = widget.buffer.drain(widget.maxFramesPerTick); // 一次读取有限帧，避免过载。
       if (res.frames.isNotEmpty || res.droppedBefore > 0) {
         widget.onDrain?.call(res);
         setState(() {
           final ts = res.frames.isNotEmpty ? res.frames.last.timestampMs : -1;
           if (ts >= 0 && ts < _lastTimestampMs) {
-            return;
+            _cache.clear();
+            _lastTimestampMs = -1;
           }
           for (final f in res.frames) {
             _cache.addSamples(f.samples);

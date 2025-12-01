@@ -21,6 +21,7 @@ class SpectrumBuffer {
   late final StreamSubscription<dynamic> _subscription;
   int _droppedFromStream = 0;
   int _lastTimestampMs = -1;
+  int _version = 0;
 
   void _handleEvent(dynamic event) {
     if (event is! Map) return;
@@ -42,6 +43,7 @@ class SpectrumBuffer {
       _queue.clear();
       _droppedFromStream = 0;
       _lastTimestampMs = ts;
+      _version++;
     } else {
       _lastTimestampMs = ts;
     }
@@ -61,9 +63,11 @@ class SpectrumBuffer {
     _queue.clear();
     _droppedFromStream = 0;
     _lastTimestampMs = -1;
+    _version++;
   }
 
   int get length => _queue.length;
+  int get version => _version;
 
   void dispose() {
     _subscription.cancel();
