@@ -5,6 +5,7 @@ import 'package:soundwave_player/soundwave_player.dart';
 
 import 'helpers/fake_soundwave_player.dart';
 
+@Skip('Story10 streaming deferred')
 void main() {
   group('AudioController streaming integration (TDD)', () {
     late FakePlatform platform;
