@@ -29,6 +29,7 @@ class SoundwavePlayerPlugin : FlutterPlugin, MethodCallHandler, EventChannel.Str
     private var headers: Map<String, String> = emptyMap()
     private var audioManager: AudioManager? = null
     private var hasFocus: Boolean = false
+    private var serviceStarted: Boolean = false
 
     override fun onAttachedToEngine(binding: FlutterPluginBinding) {
         context = binding.applicationContext
@@ -45,6 +46,7 @@ class SoundwavePlayerPlugin : FlutterPlugin, MethodCallHandler, EventChannel.Str
         methodChannel.setMethodCallHandler(null)
         stateChannel.setStreamHandler(null)
         releasePlayer()
+        stopService()
     }
 
     override fun onMethodCall(call: MethodCall, result: Result) {
@@ -57,6 +59,7 @@ class SoundwavePlayerPlugin : FlutterPlugin, MethodCallHandler, EventChannel.Str
             }
             "play" -> {
                 player?.play()
+                startService()
                 result.success(null)
             }
             "pause" -> {
@@ -65,6 +68,7 @@ class SoundwavePlayerPlugin : FlutterPlugin, MethodCallHandler, EventChannel.Str
             }
             "stop" -> {
                 player?.stop()
+                stopService()
                 result.success(null)
             }
             "seek" -> {
@@ -204,6 +208,20 @@ class SoundwavePlayerPlugin : FlutterPlugin, MethodCallHandler, EventChannel.Str
     private fun releasePlayer() {
         player?.release()
         player = null
+    }
+
+    private fun startService() {
+        if (serviceStarted) return
+        val intent = Intent(context, ForegroundAudioService::class.java)
+        context.startForegroundService(intent)
+        serviceStarted = true
+    }
+
+    private fun stopService() {
+        if (!serviceStarted) return
+        val intent = Intent(context, ForegroundAudioService::class.java)
+        context.stopService(intent)
+        serviceStarted = false
     }
 
     // Audio focus
