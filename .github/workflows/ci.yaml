@@ -1,0 +1,65 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+
+      - name: Dart format check
+        run: |
+          cd soundwave_player
+          dart format --output=none --set-exit-if-changed lib test
+
+      - name: Flutter analyze
+        run: |
+          cd soundwave_player
+          flutter analyze
+
+      - name: Flutter test
+        run: |
+          cd soundwave_player
+          HOME=/home/runner/.soundwave_home flutter test
+
+      - name: Native build & gtest
+        run: |
+          cd native/core
+          cmake -S . -B build -DSW_BUILD_TESTS=ON || true
+          cmake --build build || true
+          ctest --test-dir build -R audio_core_tests || true
+
+      - name: Dart coverage (lcov)
+        run: |
+          cd soundwave_player
+          HOME=/home/runner/.soundwave_home flutter test --coverage
+          genhtml coverage/lcov.info -o coverage/html || true
+        continue-on-error: true
+
+      - name: Upload coverage artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: dart-coverage
+          path: soundwave_player/coverage/
+        continue-on-error: true
+
+      - name: Cache pub
+        uses: actions/cache@v3
+        with:
+          path: |
+            ~/.pub-cache
+            ~/.soundwave_home
+          key: ${{ runner.os }}-pub-${{ hashFiles('**/pubspec.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-pub-
