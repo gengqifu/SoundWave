@@ -49,5 +49,31 @@ void main() {
           .timeout(const Duration(milliseconds: 200));
       expect(state.bufferedPosition?.inMilliseconds ?? 0, greaterThanOrEqualTo(7000));
     });
+
+    test('background/resume does not break pcm pipeline', () async {
+      platform.emitPcm(<String, Object?>{
+        'sequence': 1,
+        'timestampMs': 0,
+        'samples': <double>[0.1, -0.1],
+      });
+      await Future<void>.delayed(const Duration(milliseconds: 10));
+      expect(controller.pcmBuffer.drain(5).frames, isNotEmpty);
+
+      platform.emitState(<String, Object?>{'type': 'focusLost', 'message': 'call incoming'});
+      platform.emitPcm(<String, Object?>{
+        'sequence': 2,
+        'timestampMs': 10,
+        'samples': <double>[0.2, -0.2],
+      });
+      platform.emitState(<String, Object?>{
+        'type': 'resumedFromBackground',
+        'positionMs': 20,
+        'bufferedMs': 30,
+      });
+      await Future<void>.delayed(const Duration(milliseconds: 10));
+
+      final framesAfter = controller.pcmBuffer.drain(5).frames;
+      expect(framesAfter.map((f) => f.sequence), contains(2));
+    });
   });
 }
