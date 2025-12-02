@@ -11,7 +11,7 @@
 - ✔ [3] 自定义 AudioProcessor/AudioSink hook：截获播放链路 PCM 16/32bit，保持播放正常，将帧写入旁路队列。
 - ✔ [4] PCM 事件推送：后台线程按帧率（如 30fps）从队列聚合/推送到 `pcm` EventChannel，字段 `sequence`、`timestampMs`、`samples`，seek/stop/load 时重置计数/时间基并发送丢弃标记。
     - ✔ [5] 频谱计算：对旁路 PCM 做窗口+FFT（先用轻量 Java FFT；后续可替换为 JNI/kissFFT），推送 `spectrum` 事件（`sequence`、`timestampMs`、`bins`、`binHz`），与 PCM 同步重置。当前已接入 Kotlin FFT；待后续 UI 验证/优化如需，再迭代。
-- ✖ [6] 状态/生命周期：seek/stop/load/reset 时清空队列、重置时间基，后台/前台切换不阻塞播放线程，避免旧数据污染。
+    - ✔ [6] 状态/生命周期：seek/stop/load/reset 时清空队列、重置时间基，后台/前台切换不阻塞播放线程，避免旧数据污染。
 - ✖ [7] 日志与故障定位：在 PCM/频谱推送链路关键节点打 Info 级日志，便于 logcat 排查。
 
 ## 完成标准（DoD）

@@ -120,27 +120,32 @@ class SoundwavePlayerPlugin : FlutterPlugin, MethodCallHandler {
       "init" -> initPlayer(call, result)
       "load" -> {
         resetPcm()
+        stopPcmLoop()
         load(call, result)
       }
       "play" -> {
         player?.play()
         startService()
+        startPcmLoop()
         result.success(null)
       }
       "pause" -> {
         player?.pause()
+        stopPcmLoop()
         result.success(null)
       }
       "stop" -> {
         player?.stop()
         stopService()
         resetPcm()
+        stopPcmLoop()
         result.success(null)
       }
       "seek" -> {
         val pos = (call.argument<Int>("positionMs") ?: 0).toLong()
         player?.seekTo(pos)
         resetPcm()
+        stopPcmLoop()
         result.success(null)
       }
       else -> result.notImplemented()
@@ -288,7 +293,6 @@ class SoundwavePlayerPlugin : FlutterPlugin, MethodCallHandler {
     exo.setMediaSource(mediaSource)
     exo.prepare()
     requestFocus()
-    startPcmLoop()
     emitState(mapOf("type" to "state", "isPlaying" to false, "bufferedMs" to 0))
     result.success(null)
   }
@@ -411,15 +415,23 @@ class SoundwavePlayerPlugin : FlutterPlugin, MethodCallHandler {
           }
         }
       } else if (dropped > 0) {
-        pcmSink?.success(mapOf("dropped" to true, "droppedBefore" to dropped))
+        notifyDropped(dropped)
       }
       pcmHandler?.postDelayed(this, 1000L / 30L)
     }
   }
 
   private fun resetPcm() {
+    val dropped = pcmProcessor.droppedSinceLastDrain()
     pcmProcessor.onReset()
+    notifyDropped(dropped)
     log("pcm reset")
+  }
+
+  private fun notifyDropped(dropped: Int) {
+    if (dropped <= 0) return
+    pcmSink?.success(mapOf("dropped" to true, "droppedBefore" to dropped))
+    spectrumSink?.success(mapOf("dropped" to true, "droppedBefore" to dropped))
   }
 
   private fun computeSpectrum(samples: FloatArray): Pair<FloatArray, Double>? {
