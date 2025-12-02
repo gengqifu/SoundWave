@@ -54,7 +54,7 @@ public class SoundwavePlayerPlugin: NSObject, FlutterPlugin, FlutterStreamHandle
       result(nil)
     case "seek":
       let pos = (call.arguments as? [String: Any])?["positionMs"] as? Int ?? 0
-      player?.seek(to: CMTime(milliseconds: pos))
+      player?.seek(to: CMTime.makeMilliseconds(pos))
       result(nil)
     default:
       result(FlutterMethodNotImplemented)
@@ -271,6 +271,10 @@ private extension CMTime {
   func toMilliseconds() -> Int64 {
     if !isNumeric || seconds.isNaN { return 0 }
     return Int64(seconds * 1000.0)
+  }
+
+  static func makeMilliseconds(_ ms: Int) -> CMTime {
+    return CMTimeMake(value: Int64(ms), timescale: 1000)
   }
 }
 
