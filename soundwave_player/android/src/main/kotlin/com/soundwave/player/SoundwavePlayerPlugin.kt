@@ -243,15 +243,7 @@ class SoundwavePlayerPlugin : FlutterPlugin, MethodCallHandler {
     }
     val dataSourceFactory: DataSource.Factory =
       DefaultDataSource.Factory(context, httpDsFactory)
-    val mediaItemBuilder = MediaItem.Builder().setUri(source)
-    if (headers.isNotEmpty()) {
-      val props = ConcurrentHashMap<String, String>()
-      props.putAll(headers)
-      mediaItemBuilder.setRequestMetadata(
-        MediaItem.RequestMetadata.Builder().setHttpRequestHeaders(props).build()
-      )
-    }
-    val mediaItem = mediaItemBuilder.build()
+    val mediaItem = MediaItem.Builder().setUri(source).build()
     val mediaSource = if (uri.toString().endsWith(".m3u8", ignoreCase = true)) {
       HlsMediaSource.Factory(dataSourceFactory).createMediaSource(mediaItem)
     } else {
