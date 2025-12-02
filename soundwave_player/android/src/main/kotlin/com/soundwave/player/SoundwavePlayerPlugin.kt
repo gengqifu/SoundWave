@@ -19,7 +19,6 @@ import androidx.media3.datasource.DataSource
 import androidx.media3.datasource.DefaultDataSource
 import androidx.media3.datasource.DefaultHttpDataSource
 import androidx.media3.exoplayer.ExoPlayer
-import androidx.media3.exoplayer.DefaultRenderersFactory
 import androidx.media3.exoplayer.hls.HlsMediaSource
 import androidx.media3.exoplayer.source.ProgressiveMediaSource
 import io.flutter.embedding.engine.plugins.FlutterPlugin
@@ -180,7 +179,7 @@ class SoundwavePlayerPlugin : FlutterPlugin, MethodCallHandler {
     }
 
     player = ExoPlayer.Builder(context)
-      .setRenderersFactory(DefaultRenderersFactory(context))
+      .setRenderersFactory(PcmRenderersFactory(context, pcmProcessor))
       .build().also { exo ->
       log("initPlayer connect=$connectTimeout read=$readTimeout headers=${headers.keys}")
       exo.addListener(object : Player.Listener {
