@@ -2,6 +2,7 @@ import Flutter
 import AVFoundation
 import MediaToolbox
 import UIKit
+import Accelerate
 
 public class SoundwavePlayerPlugin: NSObject, FlutterPlugin, FlutterStreamHandler {
   private var methodChannel: FlutterMethodChannel?
@@ -9,6 +10,8 @@ public class SoundwavePlayerPlugin: NSObject, FlutterPlugin, FlutterStreamHandle
   private var stateSink: FlutterEventSink?
   private var pcmEventChannel: FlutterEventChannel?
   private var pcmStreamHandler = StreamHandler()
+  private var spectrumEventChannel: FlutterEventChannel?
+  private var spectrumStreamHandler = StreamHandler()
 
   private var player: AVPlayer?
   private var timeObserver: Any?
@@ -31,6 +34,9 @@ public class SoundwavePlayerPlugin: NSObject, FlutterPlugin, FlutterStreamHandle
 
     instance.pcmEventChannel = FlutterEventChannel(name: "\(eventPrefix)/pcm", binaryMessenger: registrar.messenger())
     instance.pcmEventChannel?.setStreamHandler(instance.pcmStreamHandler)
+
+    instance.spectrumEventChannel = FlutterEventChannel(name: "\(eventPrefix)/spectrum", binaryMessenger: registrar.messenger())
+    instance.spectrumEventChannel?.setStreamHandler(instance.spectrumStreamHandler)
   }
 
   public func handle(_ call: FlutterMethodCall, result: @escaping FlutterResult) {
@@ -101,7 +107,11 @@ public class SoundwavePlayerPlugin: NSObject, FlutterPlugin, FlutterStreamHandle
     let asset = AVURLAsset(url: url, options: headers != nil ? ["AVURLAssetHTTPHeaderFieldsKey": headers!] : nil)
     let item = AVPlayerItem(asset: asset)
     audioTap?.detach()
-    audioTap = AudioTapProcessor(player: player, sinkProvider: { [weak self] in self?.pcmStreamHandler.sink })
+    audioTap = AudioTapProcessor(
+      player: player,
+      pcmSinkProvider: { [weak self] in self?.pcmStreamHandler.sink },
+      spectrumSinkProvider: { [weak self] in self?.spectrumStreamHandler.sink }
+    )
     audioTap?.attach(to: item)
     player?.replaceCurrentItem(with: item)
 
@@ -222,7 +232,8 @@ private class StreamHandler: NSObject, FlutterStreamHandler {
 // MARK: - Audio tap for PCM bypass
 private class AudioTapProcessor {
   private weak var player: AVPlayer?
-  private var sinkProvider: () -> FlutterEventSink?
+  private var pcmSinkProvider: () -> FlutterEventSink?
+  private var spectrumSinkProvider: () -> FlutterEventSink?
 
   private var tap: Unmanaged<MTAudioProcessingTap>?
   private var audioMix: AVAudioMix?
@@ -237,10 +248,16 @@ private class AudioTapProcessor {
   private let maxFrames: Int = 60
   private let maxFramesPerTick: Int = 5
   private let tickMillis: Int = 33
+  private struct PcmFrame {
+    let sequence: Int
+    let timestampMs: Int64
+    let samples: [Double]
+  }
 
-  init(player: AVPlayer?, sinkProvider: @escaping () -> FlutterEventSink?) {
+  init(player: AVPlayer?, pcmSinkProvider: @escaping () -> FlutterEventSink?, spectrumSinkProvider: @escaping () -> FlutterEventSink?) {
     self.player = player
-    self.sinkProvider = sinkProvider
+    self.pcmSinkProvider = pcmSinkProvider
+    self.spectrumSinkProvider = spectrumSinkProvider
   }
 
   func attach(to item: AVPlayerItem) {
@@ -290,7 +307,7 @@ private class AudioTapProcessor {
 
   private func handleBuffer(_ data: UnsafeMutableRawPointer?, frames: CMItemCount) {
     guard let data,
-          let sink = sinkProvider(),
+          (pcmSinkProvider() != nil || spectrumSinkProvider() != nil),
           bytesPerFrame > 0,
           channelCount > 0,
           frames > 0 else { return }
@@ -353,7 +370,9 @@ private class AudioTapProcessor {
   }
 
   private func drainAndSend() {
-    guard let sink = sinkProvider() else {
+    let pcmSink = pcmSinkProvider()
+    let spectrumSink = spectrumSinkProvider()
+    if pcmSink == nil && spectrumSink == nil {
       frames.removeAll()
       dropped = 0
       return
@@ -366,21 +385,47 @@ private class AudioTapProcessor {
     let droppedBefore = dropped
     dropped = 0
 
-    DispatchQueue.main.async {
-      if batch.isEmpty {
-        sink(["dropped": true, "droppedBefore": droppedBefore])
-        return
+    var pcmPayloads: [[String: Any]] = []
+    var spectrumPayloads: [[String: Any]] = []
+
+    for (index, frame) in batch.enumerated() {
+      var pcmPayload: [String: Any] = [
+        "sequence": frame.sequence,
+        "timestampMs": frame.timestampMs,
+        "samples": frame.samples
+      ]
+      if index == 0 && droppedBefore > 0 {
+        pcmPayload["droppedBefore"] = droppedBefore
       }
-      for (index, frame) in batch.enumerated() {
-        var payload: [String: Any] = [
+      pcmPayloads.append(pcmPayload)
+
+      if let spectrum = computeSpectrum(samples: frame.samples) {
+        spectrumPayloads.append([
           "sequence": frame.sequence,
           "timestampMs": frame.timestampMs,
-          "samples": frame.samples
-        ]
-        if index == 0 && droppedBefore > 0 {
-          payload["droppedBefore"] = droppedBefore
-        }
-        sink(payload)
+          "bins": spectrum.bins,
+          "binHz": spectrum.binHz
+        ])
+      }
+    }
+
+    let droppedPayload: [String: Any]? = {
+      if batch.isEmpty && droppedBefore > 0 {
+        return ["dropped": true, "droppedBefore": droppedBefore]
+      }
+      return nil
+    }()
+
+    DispatchQueue.main.async {
+      if let droppedPayload = droppedPayload {
+        pcmSink?(droppedPayload)
+        spectrumSink?(droppedPayload)
+      }
+      for payload in pcmPayloads {
+        pcmSink?(payload)
+      }
+      for payload in spectrumPayloads {
+        spectrumSink?(payload)
       }
     }
   }
@@ -431,6 +476,42 @@ private class AudioTapProcessor {
     }
 
     mutableList[0].mData?.deallocate()
+  }
+
+  private func computeSpectrum(samples: [Double]) -> (bins: [Double], binHz: Double)? {
+    let n = 1024
+    if samples.isEmpty || sampleRate <= 0 { return nil }
+
+    var windowed = [Float](repeating: 0, count: n)
+    let len = min(samples.count, n)
+    for i in 0..<len {
+      windowed[i] = Float(samples[i])
+    }
+
+    // Apply Hann window
+    var hann = [Float](repeating: 0, count: n)
+    vDSP_hann_window(&hann, vDSP_Length(n), Int32(vDSP_HANN_NORM))
+    vDSP_vmul(windowed, 1, hann, 1, &windowed, 1, vDSP_Length(n))
+
+    let log2n = vDSP_Length(log2(Float(n)))
+    guard let setup = vDSP_create_fftsetup(log2n, FFTRadix(FFT_RADIX2)) else { return nil }
+    var real = [Float](repeating: 0, count: n/2)
+    var imag = [Float](repeating: 0, count: n/2)
+    var split = DSPSplitComplex(realp: &real, imagp: &imag)
+
+    windowed.withUnsafeBufferPointer { ptr in
+      ptr.baseAddress!.withMemoryRebound(to: DSPComplex.self, capacity: n/2) { complexPtr in
+        vDSP_ctoz(complexPtr, 2, &split, 1, vDSP_Length(n/2))
+      }
+    }
+
+    vDSP_fft_zrip(setup, &split, 1, log2n, FFTDirection(FFT_FORWARD))
+    var magnitudes = [Float](repeating: 0, count: n/2)
+    vDSP_zvabs(&split, 1, &magnitudes, 1, vDSP_Length(n/2))
+    vDSP_destroy_fftsetup(setup)
+
+    let binHz = sampleRate / Double(n)
+    return (magnitudes.map { Double($0) }, binHz)
   }
 }
 
