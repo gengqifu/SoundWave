@@ -7,11 +7,10 @@
 - ✔ [1] 补充测试计划（占位）：约定事件格式、时间戳/帧率与节流规则，覆盖 HTTP（ATS 例外）与本地 asset（沙盒拷贝）两类输入，仅限真机（iOS 15+，如 iPhone 12/13/14），模拟器不验。
 - ✔ [2] 添加占位/跳过用例：`soundwave_player/test/ios_pcm_fft_placeholder.dart`，模拟 PCM/频谱事件的缓冲、时间戳回退处理，因 iOS 原生旁路未落地故全局 Skip。
 
-## 开发任务
 - ✔ [3] AVPlayer 旁路：在 `AVPlayerItem` 上添加 `AVAudioMix` + `audioTapProcessor` 获取 PCM 16/32bit，保持播放正常。
 - ✔ [4] PCM 事件推送：后台线程/队列聚合帧，按帧率（~30fps）推到 `pcm` EventChannel，字段 `sequence`、`timestampMs`（基于 `currentTime()`）、`samples`；seek/stop/load 时重置计数/清空队列并上报丢弃。
 - ✔ [5] 频谱计算：使用 Accelerate/vDSP 对旁路 PCM 窗口化+FFT（后续可替换为 KissFFT 保持跨平台一致性），推送 `spectrum` 事件（`sequence`、`timestampMs`、`bins`、`binHz`），与 PCM 同步重置，限制 CPU（可抽稀频率/下采样）。
-- ✖ [6] 资源加载与配置：支持 HTTP（必要时 Info.plist ATS 例外）和本地 asset（拷贝到沙盒后播放）；确保解码与旁路兼容。
+- ✔ [6] 资源加载与配置：示例增加本地 asset `sample.wav` 拷贝到沙盒并填充路径的按钮；iOS Info.plist 增加 ATS 例外以便开发阶段 HTTP 访问，保持播放/旁路兼容。
 - ✖ [7] 状态/生命周期：处理中断/路由/后台前台切换时，暂停/恢复旁路，避免旧数据污染；释放时移除 tap 与观察者。
 - ✖ [8] 日志与诊断：在 tap/推送链路关键节点打 Info 级日志，便于 `flutter run`/Xcode 控制台排查。
 

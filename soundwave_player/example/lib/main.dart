@@ -1,4 +1,8 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart' show rootBundle;
+import 'package:path_provider/path_provider.dart';
 import 'package:soundwave_player/soundwave_player.dart';
 
 const _defaultSource =
@@ -92,6 +96,22 @@ class _MyAppState extends State<MyApp> {
     }
   }
 
+  Future<void> _useBundledSample() async {
+    try {
+      final data = await rootBundle.load('assets/audio/sample.wav');
+      final dir = await getTemporaryDirectory();
+      final file = File('${dir.path}/sample.wav');
+      await file.writeAsBytes(data.buffer.asUint8List());
+      final path = 'file://${file.path}';
+      setState(() {
+        _sourceController.text = path;
+      });
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('已拷贝示例音频到本地临时目录')));
+    } catch (e) {
+      _showError('Load sample failed: $e');
+    }
+  }
+
   Future<void> _seek() async {
     try {
       final ms = int.tryParse(_seekController.text.trim()) ?? 0;
@@ -120,6 +140,13 @@ class _MyAppState extends State<MyApp> {
               TextField(
                 controller: _sourceController,
                 decoration: const InputDecoration(labelText: 'Source (file:// or http://)'),
+              ),
+              const SizedBox(height: 8),
+              Wrap(
+                spacing: 8,
+                children: [
+                  OutlinedButton(onPressed: _useBundledSample, child: const Text('Use bundled sample.wav')),
+                ],
               ),
               const SizedBox(height: 8),
               Wrap(
