@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 
 import 'pcm_buffer.dart';
+import 'pcm_frame.dart';
 import 'waveform_cache.dart';
 import 'waveform_view.dart';
 
@@ -95,7 +96,7 @@ class _WaveformStreamViewState extends State<WaveformStreamView> {
       height: widget.height,
       width: double.infinity,
       child: WaveformView(
-        frames: const [],
+        frames: const <PcmFrame>[],
         cache: _cache,
         color: widget.color,
         background: widget.background,

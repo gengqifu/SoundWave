@@ -40,7 +40,8 @@ class WaveformView extends StatelessWidget {
           color: color,
           background: background,
           strokeWidth: strokeWidth,
-          cache: cache),
+          cache: cache,
+          cacheVersion: cache?.version ?? 0),
       size: const Size(double.infinity, 120),
     );
   }
@@ -51,20 +52,20 @@ class _WaveformPainter extends CustomPainter {
       {required this.color,
       required this.background,
       required this.strokeWidth,
-      this.cache});
+      this.cache,
+      required this.cacheVersion});
 
   final List<PcmFrame> frames;
   final Color color;
   final Color background;
   final double strokeWidth;
   final WaveformCache? cache;
+  final int cacheVersion;
 
   @override
   void paint(Canvas canvas, Size size) {
     final paintBg = Paint()..color = background;
     canvas.drawRect(Offset.zero & size, paintBg);
-
-    if (frames.isEmpty) return;
 
     final paint = Paint()
       ..color = color
@@ -88,14 +89,14 @@ class _WaveformPainter extends CustomPainter {
   }
 
   List<WaveformBucket> _buildBuckets(double width) {
-    if (frames.isEmpty || width <= 0) return const [];
+    if (width <= 0) return const [];
+    if (cache != null) {
+      return cache!.bucketsForWidth(width);
+    }
+    if (frames.isEmpty) return const [];
     final samples = <double>[];
     for (final f in frames) {
       samples.addAll(f.samples);
-    }
-    if (cache != null) {
-      cache!.addSamples(samples);
-      return cache!.bucketsForWidth(width);
     }
     if (samples.isEmpty) return const [];
     final bucketSize = math.max(1, (samples.length / width).ceil());
@@ -118,6 +119,9 @@ class _WaveformPainter extends CustomPainter {
 
   @override
   bool shouldRepaint(covariant _WaveformPainter oldDelegate) {
-    return oldDelegate.frames != frames || oldDelegate.color != color || oldDelegate.background != background;
+    return oldDelegate.frames != frames ||
+        oldDelegate.color != color ||
+        oldDelegate.background != background ||
+        oldDelegate.cacheVersion != cacheVersion;
   }
 }

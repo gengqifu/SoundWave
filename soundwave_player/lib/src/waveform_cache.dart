@@ -13,13 +13,22 @@ class WaveformCache {
 
   final int maxSamples;
   final ListQueue<double> _samples = ListQueue<double>();
+  int _version = 0;
+
+  int get version => _version;
 
   void addSamples(Iterable<double> samples) {
+    var mutated = false;
     for (final s in samples) {
       _samples.add(s);
+      mutated = true;
     }
     while (_samples.length > maxSamples) {
       _samples.removeFirst();
+      mutated = true;
+    }
+    if (mutated) {
+      _version++;
     }
   }
 
@@ -45,5 +54,9 @@ class WaveformCache {
 
   int get length => _samples.length;
 
-  void clear() => _samples.clear();
+  void clear() {
+    if (_samples.isEmpty) return;
+    _samples.clear();
+    _version++;
+  }
 }
