@@ -1,5 +1,6 @@
 package com.soundwave.player
 
+import android.util.Log
 import io.flutter.embedding.engine.plugins.FlutterPlugin
 import io.flutter.plugin.common.EventChannel
 import io.flutter.plugin.common.MethodCall
@@ -15,6 +16,7 @@ class SoundwavePlayerPlugin : FlutterPlugin, MethodCallHandler, EventChannel.Str
   private lateinit var spectrumEventChannel: EventChannel
 
   override fun onAttachedToEngine(binding: FlutterPlugin.FlutterPluginBinding) {
+    log("onAttachedToEngine")
     methodChannel = MethodChannel(binding.binaryMessenger, METHOD_CHANNEL_NAME)
     methodChannel.setMethodCallHandler(this)
 
@@ -28,6 +30,7 @@ class SoundwavePlayerPlugin : FlutterPlugin, MethodCallHandler, EventChannel.Str
   }
 
   override fun onDetachedFromEngine(binding: FlutterPlugin.FlutterPluginBinding) {
+    log("onDetachedFromEngine")
     methodChannel.setMethodCallHandler(null)
     stateEventChannel.setStreamHandler(null)
     pcmEventChannel.setStreamHandler(null)
@@ -35,6 +38,7 @@ class SoundwavePlayerPlugin : FlutterPlugin, MethodCallHandler, EventChannel.Str
   }
 
   override fun onMethodCall(call: MethodCall, result: Result) {
+    log("onMethodCall ${call.method}")
     when (call.method) {
       "init",
       "load",
@@ -52,15 +56,23 @@ class SoundwavePlayerPlugin : FlutterPlugin, MethodCallHandler, EventChannel.Str
 
   // EventChannel.StreamHandler placeholders
   override fun onListen(arguments: Any?, events: EventChannel.EventSink?) {
+    log("onListen ${arguments ?: "null"}")
     // No-op placeholder stream; actual event emission will be added in later tasks.
   }
 
   override fun onCancel(arguments: Any?) {
+    log("onCancel ${arguments ?: "null"}")
     // No-op
   }
 
   companion object {
     private const val METHOD_CHANNEL_NAME = "soundwave_player"
     private const val EVENT_PREFIX = "soundwave_player/events"
+    private const val TAG = "Soundwave"
+  }
+
+  private fun log(msg: String) {
+    Log.i(TAG, msg)
+    println("Soundwave: $msg")
   }
 }
