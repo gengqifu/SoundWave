@@ -4,7 +4,7 @@
 在 iOS 侧为 AVPlayer 播放链路接入音频 tap/旁路，获取 PCM 帧并通过 EventChannel 推送到 Dart，完成基础频谱（FFT）计算推送，使波形/频谱 UI 能实时展示本地/HTTP 音频数据。
 
 ## 测试优先（TDD）
-- ✖ [1] 补充测试计划（占位）：约定事件格式、时间戳与节流规则，覆盖 HTTP/本地 asset 两类输入。
+- ✔ [1] 补充测试计划（占位）：约定事件格式、时间戳/帧率与节流规则，覆盖 HTTP（ATS 例外）与本地 asset（沙盒拷贝）两类输入，仅限真机（iOS 15+，如 iPhone 12/13/14），模拟器不验。
 - ✖ [2] 添加占位/跳过用例：如 `soundwave_player/test/ios_pcm_fft_placeholder.dart`，模拟事件流验证 Dart 缓冲/波形组件消费数据；若缺运行环境则 `@Skip` 并写明原因。
 
 ## 开发任务
@@ -21,7 +21,8 @@
 - ✖ [11] 构建通过；占位测试计划/用例已更新并标注原因。
 
 ### T1 测试计划（占位）
-- 事件格式：PCM 事件包含 `sequence:int`、`timestampMs:int64`、`samples:float[]`；频谱事件包含 `sequence`、`timestampMs`、`bins:float[]`、`binHz:double`。
-- 序列与时间戳：同一事件流内单调递增；seek/stop/load 后重置为 0/新基准，并丢弃旧队列。
-- 丢帧标记：旁路队列溢出或聚合丢弃时推送 `droppedBefore:int` 或 `dropped:true`，便于 UI 统计丢帧。
-- 帧率节流：PCM/谱推送不超过 ~30fps；队列上限（如 60 帧）溢出即丢弃最旧；FFT 可抽稀频率以控 CPU。
+- 事件格式：PCM 事件包含 `sequence:int`、`timestampMs:int64`（来源于 `currentTime()`）、`samples:float[]`；频谱事件包含 `sequence`、`timestampMs`、`bins:float[]`、`binHz:double`。丢帧时附 `droppedBefore:int`。
+- 序列与时间戳：同一事件流单调递增；`seek/stop/load` 后序列与时间基重置且清空队列，旧数据不得混入。
+- 帧率与节流：PCM/谱推送 ≤ 30fps；旁路队列上限（如 60 帧）溢出则丢弃最旧并上报丢帧。FFT 可隔帧抽稀/降采样以控 CPU。
+- 输入场景：HTTP MP3/AAC（如需 ATS 例外在 Info.plist 开启），本地 asset 拷贝至沙盒后播放，验证两者均收到 PCM/FFT。
+- 设备与性能：真机 iOS 15+（iPhone 12/13/14）；播放 60 秒内 CPU 占用不应明显飙升（FFT 抽稀后 < 25% 峰值），内存无持续增长；回到前台后继续推送且序列不中断。
