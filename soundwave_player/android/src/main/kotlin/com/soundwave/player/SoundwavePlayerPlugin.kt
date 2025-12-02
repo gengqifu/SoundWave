@@ -7,6 +7,9 @@ import android.net.Uri
 import android.os.Handler
 import android.os.HandlerThread
 import android.util.Log
+import kotlin.math.PI
+import kotlin.math.cos
+import kotlin.math.hypot
 import androidx.media3.common.MediaItem
 import androidx.media3.common.PlaybackException
 import androidx.media3.common.Player
@@ -48,6 +51,7 @@ class SoundwavePlayerPlugin : FlutterPlugin, MethodCallHandler {
   private var hasFocus: Boolean = false
   private var serviceStarted: Boolean = false
   private val pcmProcessor = PcmTapProcessor()
+  private var sampleRate: Int = 48000
   private var pcmWorker: HandlerThread? = null
   private var pcmHandler: Handler? = null
 
@@ -148,6 +152,7 @@ class SoundwavePlayerPlugin : FlutterPlugin, MethodCallHandler {
     stopPcmLoop()
     stopPcmLoop()
     val config = call.arguments as? Map<*, *> ?: emptyMap<String, Any?>()
+    sampleRate = (config["sampleRate"] as? Number)?.toInt() ?: sampleRate
     val network = config["network"] as? Map<*, *>
     val connectTimeout =
       (network?.get("connectTimeoutMs") as? Number)?.toInt()
@@ -380,23 +385,98 @@ class SoundwavePlayerPlugin : FlutterPlugin, MethodCallHandler {
   private val pcmPushRunnable = object : Runnable {
     override fun run() {
       val frames = pcmProcessor.drain(5)
-    if (frames.isNotEmpty()) {
-      frames.forEach { frame ->
-        pcmSink?.success(
-          mapOf(
-            "sequence" to frame.sequence,
-            "timestampMs" to frame.timestampMs,
-            "samples" to frame.samples.toList()
+      val dropped = pcmProcessor.droppedSinceLastDrain()
+      if (frames.isNotEmpty()) {
+        frames.forEach { frame ->
+          pcmSink?.success(
+            mapOf(
+              "sequence" to frame.sequence,
+              "timestampMs" to frame.timestampMs,
+              "samples" to frame.samples.toList(),
+              "droppedBefore" to dropped
+            )
           )
-        )
+          val spectrum = computeSpectrum(frame.samples)
+          if (spectrum != null) {
+            spectrumSink?.success(
+              mapOf(
+                "sequence" to frame.sequence,
+                "timestampMs" to frame.timestampMs,
+                "bins" to spectrum.first.toList(),
+                "binHz" to spectrum.second
+              )
+            )
+          }
+        }
+      } else if (dropped > 0) {
+        pcmSink?.success(mapOf("dropped" to true, "droppedBefore" to dropped))
       }
+      pcmHandler?.postDelayed(this, 1000L / 30L)
     }
-    pcmHandler?.postDelayed(this, 1000L / 30L)
   }
 
   private fun resetPcm() {
     pcmProcessor.onReset()
     log("pcm reset")
+  }
+
+  private fun computeSpectrum(samples: FloatArray): Pair<FloatArray, Double>? {
+    val n = 1024
+    if (samples.isEmpty()) return null
+    val re = FloatArray(n)
+    val im = FloatArray(n)
+    val len = minOf(samples.size, n)
+    // Hann window and copy
+    for (i in 0 until len) {
+      val w = 0.5f * (1f - cos((2.0 * PI * i) / (n - 1)).toFloat())
+      re[i] = samples[i] * w
+    }
+    // iterative Cooley-Tukey FFT (radix-2)
+    var m = 2
+    while (m <= n) {
+      val half = m / 2
+      val theta = (-2.0 * PI / m).toFloat()
+      val wmRe = cos(theta)
+      val wmIm = kotlin.math.sin(theta)
+      for (j in 0 until half) {
+        var wRe = 1f
+        var wIm = 0f
+        var k = j
+        while (k < n) {
+          val tRe = wRe * re[k + half] - wIm * im[k + half]
+          val tIm = wRe * im[k + half] + wIm * re[k + half]
+          re[k + half] = re[k] - tRe
+          im[k + half] = im[k] - tIm
+          re[k] += tRe
+          im[k] += tIm
+          k += m
+        }
+        val tmpRe = wRe * wmRe - wIm * wmIm
+        wIm = wRe * wmIm + wIm * wmRe
+        wRe = tmpRe
+      }
+      m = m shl 1
+    }
+    // bit reversal
+    var j = 0
+    for (i in 1 until n) {
+      var bit = n shr 1
+      while (j and bit != 0) {
+        j = j xor bit
+        bit = bit shr 1
+      }
+      j = j xor bit
+      if (i < j) {
+        val tr = re[i]; re[i] = re[j]; re[j] = tr
+        val ti = im[i]; im[i] = im[j]; im[j] = ti
+      }
+    }
+    val bins = FloatArray(n / 2)
+    for (i in bins.indices) {
+      bins[i] = hypot(re[i].toDouble(), im[i].toDouble()).toFloat()
+    }
+    val binHz = sampleRate.toDouble() / n
+    return bins to binHz
   }
   }
 
