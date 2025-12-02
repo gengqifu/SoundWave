@@ -5,6 +5,8 @@ import android.content.Intent
 import android.media.AudioManager
 import android.net.Uri
 import android.util.Log
+import android.os.Handler
+import android.os.HandlerThread
 import androidx.media3.common.MediaItem
 import androidx.media3.common.PlaybackException
 import androidx.media3.common.Player
@@ -43,6 +45,8 @@ class SoundwavePlayerPlugin : FlutterPlugin, MethodCallHandler {
   private var hasFocus: Boolean = false
   private var serviceStarted: Boolean = false
   private val pcmProcessor = PcmTapProcessor()
+  private var pcmWorker: HandlerThread? = null
+  private var pcmHandler: Handler? = null
 
   override fun onAttachedToEngine(binding: FlutterPlugin.FlutterPluginBinding) {
     context = binding.applicationContext
@@ -98,6 +102,7 @@ class SoundwavePlayerPlugin : FlutterPlugin, MethodCallHandler {
     spectrumEventChannel.setStreamHandler(null)
     releasePlayer()
     stopService()
+    stopPcmLoop()
     log("onDetachedFromEngine")
   }
 
@@ -132,6 +137,7 @@ class SoundwavePlayerPlugin : FlutterPlugin, MethodCallHandler {
   private fun initPlayer(call: MethodCall, result: Result) {
     releasePlayer()
     abandonFocus()
+    stopPcmLoop()
     val config = call.arguments as? Map<*, *> ?: emptyMap<String, Any?>()
     val network = config["network"] as? Map<*, *>
     val connectTimeout =
@@ -267,6 +273,7 @@ class SoundwavePlayerPlugin : FlutterPlugin, MethodCallHandler {
     exo.setMediaSource(mediaSource)
     exo.prepare()
     requestFocus()
+    startPcmLoop()
     emitState(mapOf("type" to "state", "isPlaying" to false, "bufferedMs" to 0))
     result.success(null)
   }
@@ -341,6 +348,42 @@ class SoundwavePlayerPlugin : FlutterPlugin, MethodCallHandler {
       }
     }
     log("audioFocusChange=$focusChange playing=${player?.isPlaying}")
+  }
+
+  private fun startPcmLoop() {
+    if (pcmWorker == null) {
+      pcmWorker = HandlerThread("pcm-push").also { it.start() }
+      pcmHandler = Handler(pcmWorker!!.looper)
+    }
+    pcmHandler?.removeCallbacksAndMessages(null)
+    pcmHandler?.post(pcmPushRunnable)
+    log("pcmLoop started")
+  }
+
+  private fun stopPcmLoop() {
+    pcmHandler?.removeCallbacksAndMessages(null)
+    pcmWorker?.quitSafely()
+    pcmWorker = null
+    pcmHandler = null
+    log("pcmLoop stopped")
+  }
+
+  private val pcmPushRunnable = object : Runnable {
+    override fun run() {
+      val frames = pcmProcessor.drain(5)
+      if (frames.isNotEmpty()) {
+        frames.forEach { frame ->
+          pcmSink?.success(
+            mapOf(
+              "sequence" to frame.sequence,
+              "timestampMs" to frame.timestampMs,
+              "samples" to frame.samples.toList()
+            )
+          )
+        }
+      }
+      pcmHandler?.postDelayed(this, 1000L / 30L)
+    }
   }
 
   companion object {
