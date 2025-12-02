@@ -1,11 +1,14 @@
 import Flutter
 import AVFoundation
+import MediaToolbox
 import UIKit
 
 public class SoundwavePlayerPlugin: NSObject, FlutterPlugin, FlutterStreamHandler {
   private var methodChannel: FlutterMethodChannel?
   private var stateEventChannel: FlutterEventChannel?
   private var stateSink: FlutterEventSink?
+  private var pcmEventChannel: FlutterEventChannel?
+  private var pcmStreamHandler = StreamHandler()
 
   private var player: AVPlayer?
   private var timeObserver: Any?
@@ -16,6 +19,7 @@ public class SoundwavePlayerPlugin: NSObject, FlutterPlugin, FlutterStreamHandle
   private var routeObserver: NSObjectProtocol?
   private var backgroundObserver: NSObjectProtocol?
   private var foregroundObserver: NSObjectProtocol?
+  private var audioTap: AudioTapProcessor?
 
   public static func register(with registrar: FlutterPluginRegistrar) {
     let instance = SoundwavePlayerPlugin()
@@ -24,6 +28,9 @@ public class SoundwavePlayerPlugin: NSObject, FlutterPlugin, FlutterStreamHandle
 
     instance.stateEventChannel = FlutterEventChannel(name: "\(eventPrefix)/state", binaryMessenger: registrar.messenger())
     instance.stateEventChannel?.setStreamHandler(instance)
+
+    instance.pcmEventChannel = FlutterEventChannel(name: "\(eventPrefix)/pcm", binaryMessenger: registrar.messenger())
+    instance.pcmEventChannel?.setStreamHandler(instance.pcmStreamHandler)
   }
 
   public func handle(_ call: FlutterMethodCall, result: @escaping FlutterResult) {
@@ -93,6 +100,9 @@ public class SoundwavePlayerPlugin: NSObject, FlutterPlugin, FlutterStreamHandle
   private func load(url: URL, headers: [String: String]?) {
     let asset = AVURLAsset(url: url, options: headers != nil ? ["AVURLAssetHTTPHeaderFieldsKey": headers!] : nil)
     let item = AVPlayerItem(asset: asset)
+    audioTap?.detach()
+    audioTap = AudioTapProcessor(player: player, sinkProvider: { [weak self] in self?.pcmStreamHandler.sink })
+    audioTap?.attach(to: item)
     player?.replaceCurrentItem(with: item)
 
     statusObserver = item.observe(\.status, options: [.new, .initial]) { [weak self] item, _ in
@@ -158,6 +168,8 @@ public class SoundwavePlayerPlugin: NSObject, FlutterPlugin, FlutterStreamHandle
     statusObserver = nil
     timeControlObserver = nil
     itemLoadedObserver = nil
+    audioTap?.detach()
+    audioTap = nil
     if let obs = interruptionObserver {
       NotificationCenter.default.removeObserver(obs)
       interruptionObserver = nil
@@ -191,6 +203,166 @@ public class SoundwavePlayerPlugin: NSObject, FlutterPlugin, FlutterStreamHandle
 
   private static let methodChannelName = "soundwave_player"
   private static let eventPrefix = "soundwave_player/events"
+}
+
+private class StreamHandler: NSObject, FlutterStreamHandler {
+  var sink: FlutterEventSink?
+
+  func onListen(withArguments arguments: Any?, eventSink events: @escaping FlutterEventSink) -> FlutterError? {
+    sink = events
+    return nil
+  }
+
+  func onCancel(withArguments arguments: Any?) -> FlutterError? {
+    sink = nil
+    return nil
+  }
+}
+
+// MARK: - Audio tap for PCM bypass
+private class AudioTapProcessor {
+  private weak var player: AVPlayer?
+  private var sinkProvider: () -> FlutterEventSink?
+
+  private var tap: Unmanaged<MTAudioProcessingTap>?
+  private var audioMix: AVAudioMix?
+  private var channelCount: UInt32 = 0
+  private var bytesPerFrame: UInt32 = 0
+  private var sampleRate: Double = 0
+  private var sequence: Int = 0
+
+  init(player: AVPlayer?, sinkProvider: @escaping () -> FlutterEventSink?) {
+    self.player = player
+    self.sinkProvider = sinkProvider
+  }
+
+  func attach(to item: AVPlayerItem) {
+    detach()
+
+    var callbacks = MTAudioProcessingTapCallbacks(
+      version: kMTAudioProcessingTapCallbacksVersion_0,
+      clientInfo: UnsafeMutableRawPointer(Unmanaged.passUnretained(self).toOpaque()),
+      init: tapInit,
+      finalize: tapFinalize,
+      prepare: tapPrepare,
+      unprepare: tapUnprepare,
+      process: tapProcess
+    )
+
+    var tapOut: Unmanaged<MTAudioProcessingTap>?
+    let status = MTAudioProcessingTapCreate(kCFAllocatorDefault,
+                                            &callbacks,
+                                            kMTAudioProcessingTapCreationFlag_PostEffects,
+                                            &tapOut)
+    guard status == noErr, let tapOut else {
+      return
+    }
+    tap = tapOut
+
+    let params = AVMutableAudioMixInputParameters()
+    params.setTapProcessor(tapOut.takeUnretainedValue())
+    let mix = AVMutableAudioMix()
+    mix.inputParameters = [params]
+    audioMix = mix
+    item.audioMix = mix
+  }
+
+  func detach() {
+    if let tap = tap?.takeUnretainedValue() {
+      MTAudioProcessingTapInvalidate(tap)
+    }
+    tap = nil
+    audioMix = nil
+  }
+
+  private func handleBuffer(_ data: UnsafeMutableRawPointer?, frames: CMItemCount) {
+    guard let data,
+          let sink = sinkProvider(),
+          bytesPerFrame > 0,
+          channelCount > 0,
+          frames > 0 else { return }
+
+    let samplesCount = Int(frames * CMItemCount(channelCount))
+    let floatPtr = data.assumingMemoryBound(to: Float32.self)
+    var samples = [Double](repeating: 0, count: samplesCount)
+    for i in 0..<samplesCount {
+      samples[i] = Double(floatPtr[i])
+    }
+
+    let ts = player?.currentPositionMs ?? 0
+    let seq = sequence
+    sequence += 1
+
+    DispatchQueue.main.async {
+      sink([
+        "sequence": seq,
+        "timestampMs": ts,
+        "samples": samples
+      ])
+    }
+  }
+
+  private func onPrepare(maxFrames: CMItemCount, format: AudioStreamBasicDescription) {
+    channelCount = format.mChannelsPerFrame
+    bytesPerFrame = format.mBytesPerFrame
+    sampleRate = format.mSampleRate
+    sequence = 0
+  }
+
+  private func onUnprepare() {
+    channelCount = 0
+    bytesPerFrame = 0
+    sampleRate = 0
+    sequence = 0
+  }
+
+  // MARK: - Tap callbacks
+  private let tapInit: MTAudioProcessingTapInitCallback = { tap, clientInfo, tapStorageOut in
+    tapStorageOut?.pointee = clientInfo
+  }
+
+  private let tapFinalize: MTAudioProcessingTapFinalizeCallback = { _, _ in }
+
+  private let tapPrepare: MTAudioProcessingTapPrepareCallback = { tap, maxFrames, processingFormat in
+    guard let storage = MTAudioProcessingTapGetStorage(tap) else { return }
+    let processor = Unmanaged<AudioTapProcessor>.fromOpaque(storage).takeUnretainedValue()
+    processor.onPrepare(maxFrames: maxFrames, format: processingFormat.pointee)
+  }
+
+  private let tapUnprepare: MTAudioProcessingTapUnprepareCallback = { tap in
+    guard let storage = MTAudioProcessingTapGetStorage(tap) else { return }
+    let processor = Unmanaged<AudioTapProcessor>.fromOpaque(storage).takeUnretainedValue()
+    processor.onUnprepare()
+  }
+
+  private let tapProcess: MTAudioProcessingTapProcessCallback = { tap, numberFrames, flags, bufferListInOut, numberFramesOut, _ in
+    guard let storage = MTAudioProcessingTapGetStorage(tap),
+          let bufferListInOut = bufferListInOut else { return }
+    let processor = Unmanaged<AudioTapProcessor>.fromOpaque(storage).takeUnretainedValue()
+
+    var localFlags = MTAudioProcessingTapFlags(rawValue: 0)
+    var timeRange = CMTimeRange()
+    numberFramesOut.pointee = 0
+
+    // Allocate buffer list for interleaved PCM.
+    let mutableList = UnsafeMutableAudioBufferListPointer(bufferListInOut)
+    let byteCount = Int(numberFrames) * Int(processor.bytesPerFrame)
+    mutableList[0].mNumberChannels = processor.channelCount
+    mutableList[0].mDataByteSize = UInt32(byteCount)
+    mutableList[0].mData = UnsafeMutableRawPointer.allocate(byteCount: byteCount, alignment: MemoryLayout<Float32>.alignment)
+
+    let status = MTAudioProcessingTapGetSourceAudio(tap,
+                                                    numberFrames,
+                                                    bufferListInOut,
+                                                    &localFlags,
+                                                    &timeRange,
+                                                    numberFramesOut)
+    if status == noErr, let data = mutableList[0].mData, numberFramesOut.pointee > 0 {
+      processor.handleBuffer(data, frames: numberFramesOut.pointee)
+    }
+
+    mutableList[0].mData?.deallocate()
+  }
 }
 
 // MARK: - Audio session & notifications
