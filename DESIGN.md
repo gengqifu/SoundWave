@@ -115,3 +115,81 @@ flowchart TB
 
     classDef src fill:#e8f0fe,stroke:#5c6bc0,color:#1a237e;
 ```
+
+### 10.3 播放 + 可视化时序
+```mermaid
+sequenceDiagram
+    participant Dart as Dart UI
+    participant Plugin as Flutter Plugin
+    participant Bridge as iOS/Android Bridge
+    participant Core as C/C++ AudioEngine
+    participant FFT as FFT/Processor Thread
+    Dart->>Plugin: init(config), load(source), play()
+    Plugin->>Bridge: MethodChannel 调用
+    Bridge->>Core: InitDevice/Decoder(config)
+    Core-->>Bridge: Ready / duration
+    Bridge-->>Plugin: EventChannel state=ready
+    Plugin-->>Dart: onState(ready)
+    loop 解码线程
+        Core-->>Core: 解码+重采样
+        Core-->>Core: 写入 RingBuffer
+    end
+    loop 回放线程
+        Core-->>Core: 读 RingBuffer -> 播放
+        Core-->>Bridge: PCM 分帧 (节流)
+        Bridge-->>Plugin: onPcmFrame
+        Plugin-->>Dart: onPcmFrame(samples,ts)
+    end
+    par 可视化分支
+        Bridge-->>FFT: PCM 分帧
+        FFT-->>FFT: 窗口化+FFT
+        FFT-->>Bridge: Spectrum(bins,binHz,ts)
+        Bridge-->>Plugin: onSpectrum
+        Plugin-->>Dart: onSpectrum
+    end
+    Dart-->>Dart: State 更新 + Waveform/Spectrum 绘制
+```
+
+### 10.4 模块职责与接口交互
+```mermaid
+flowchart LR
+    subgraph Flutter
+      UI[WaveformView\nSpectrumView\nControls]
+      Ctr[AudioController\n状态管理]
+    end
+    subgraph Plugin["Flutter Plugin"]
+      MC[MethodChannel\n参数校验/错误映射]
+      EC[EventChannel\nPCM/Spectrum/State]
+    end
+    subgraph Native["平台桥接"]
+      Platform[iOS/Android Adapter\n权限/音频设备]
+    end
+    subgraph Core["C/C++ 核心"]
+      Dec[Decoder\nFFmpeg/平台]
+      Buf[RingBuffer/Queue]
+      PcmTap[PcmTap\n分帧/节流]
+      Fft[DSP+FFT\n窗口化/功率谱]
+    end
+    UI<-->Ctr
+    Ctr-->MC
+    EC-->Ctr
+    MC-->Platform
+    Platform<-->Dec
+    Dec<-->Buf
+    Buf-->PcmTap
+    PcmTap-->EC
+    Buf-->Fft
+    Fft-->EC
+    Platform-->EC
+```
+
+### 10.5 关键流程（文字版）
+- 初始化：Dart 传入 `SoundwaveConfig`（采样率/通道/缓冲/可视化节流）。插件校验后创建 ExoPlayer/AVPlayer 与 Tap，设置 FFT 配置与回调。
+- 加载/播放：`load()` 绑定源，`play()` 启动解码线程写入环形缓冲；回放线程读取并驱动音频时钟；Tap 按 FPS/批次分帧推送 PCM，FFT 线程并行生成谱数据。
+- Seek/重置：收到 seek 后清理 PCM/Spectrum 队列、重置序号和时间基；事件带上 dropped 信息让 Dart 侧清空 UI。
+- 前后台/焦点：Bridge 监听 AudioFocus/AudioSession，失焦时降音量或暂停，恢复后上报 `state` 事件。
+
+### 10.6 性能观测点
+- 音频栈：解码耗时、回放 callback XRuns、RingBuffer 深度、丢帧数。
+- 可视化：PCM/Spectrum 推送 FPS，Dart 绘制耗时（Skia trace），UI 主线程帧率。
+- 内存：PCM/Spectrum 队列长度、缓冲池命中率。
