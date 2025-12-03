@@ -15,6 +15,7 @@ class SpectrumStyle {
     this.barWidth = 2.0,
     this.spacing = 1.0,
     this.logScale = false,
+    this.freqLogScale = true,
   });
 
   final Color barColor;
@@ -22,6 +23,7 @@ class SpectrumStyle {
   final double barWidth;
   final double spacing;
   final bool logScale;
+  final bool freqLogScale;
 }
 
 class SpectrumView extends StatelessWidget {
@@ -71,18 +73,52 @@ class _SpectrumPainter extends CustomPainter {
       ..style = PaintingStyle.fill;
 
     final double totalWidth = size.width;
-    final double barFullWidth = style.barWidth + style.spacing;
-    final int maxBars = (totalWidth / barFullWidth).floor().clamp(1, bins.length);
-    final step = bins.length / maxBars;
+    if (totalWidth <= 0) return;
+
+    // 让柱子横向铺满：barWidth/spacing 作为偏好，但不足的情况下按等距拉伸。
+    final double preferredFull = style.barWidth + style.spacing;
+    final int maxBars = math.max(
+      1,
+      math.min(bins.length, preferredFull > 0 ? (totalWidth / preferredFull).floor() : bins.length),
+    );
+    final double xStep = totalWidth / maxBars;
+    final double barWidth = math.max(
+      0.5, // 避免宽度过小不可见
+      math.min(style.barWidth, xStep - style.spacing),
+    );
+
+    // 频率轴可选 log 分布，将低频更平均铺开到全宽，避免只挤在左侧。
+    final double binHz;
+    if (bins.length >= 2) {
+      binHz = (bins[1].frequency - bins[0].frequency).abs();
+    } else {
+      binHz = bins.isNotEmpty ? math.max(1e-9, bins.first.frequency) : 1.0;
+    }
+    final double minFreq = math.max(binHz, bins.isNotEmpty ? bins.first.frequency : binHz);
+    final double maxFreq = bins.isNotEmpty ? bins.last.frequency + binHz : binHz;
 
     for (int i = 0; i < maxBars; i++) {
-      final idx = (i * step).floor();
-      final magnitudeRaw = processed[idx];
+      final double t = maxBars == 1 ? 0.0 : i / (maxBars - 1);
+      double sampleIdx;
+      if (style.freqLogScale && maxFreq > minFreq) {
+        // log 均分频率
+        final double targetFreq =
+            minFreq * math.pow(maxFreq / minFreq, t); // start->end 按 log 平滑放大低频
+        sampleIdx = targetFreq / math.max(1e-9, binHz);
+      } else {
+        sampleIdx = t * (bins.length - 1);
+      }
+
+      final int idx0 = sampleIdx.floor().clamp(0, bins.length - 1);
+      final int idx1 = sampleIdx.ceil().clamp(0, bins.length - 1);
+      final double frac = sampleIdx - idx0;
+      final double magnitudeRaw =
+          processed[idx0] * (1 - frac) + processed[idx1] * frac; // 线性插值，避免锯齿
       final normalized = (magnitudeRaw / maxMag).clamp(0.0, 1.0);
       final barHeight = normalized * size.height;
       if (barHeight <= 0) continue;
-      final left = i * barFullWidth;
-      final rect = Rect.fromLTWH(left, size.height - barHeight, style.barWidth, barHeight);
+      final left = i * xStep + (xStep - barWidth) * 0.5;
+      final rect = Rect.fromLTWH(left, size.height - barHeight, barWidth, barHeight);
       canvas.drawRect(rect, paint);
     }
   }
