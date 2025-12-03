@@ -41,6 +41,19 @@ void listen() {
 - 参数校验：空 source、负 `seek`、非正 sampleRate/bufferSize/channels 会抛 `ArgumentError`。
 - 流式播放/弱网策略尚未实现（Story10 暂缓），当前聚焦本地播放。
 
+### 可视化样式
+```dart
+const SpectrumStyle(
+  barColor: Colors.cyan,
+  background: Colors.black,
+  barWidth: 2,
+  spacing: 1,
+  logScale: true,      // 幅度对数压缩，防止峰值淹没细节
+  freqLogScale: true,  // 频率轴对数分布，低频更宽
+);
+```
+- 低频占比过大时，可将 `freqLogScale` 设为 `false` 变为线性频率轴，或调小 `logScale` 影响。
+
 ## 开发
 
 - 格式化：`HOME=/your/writable/home dart format lib test example/lib`
