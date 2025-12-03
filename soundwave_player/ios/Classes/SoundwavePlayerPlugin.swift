@@ -1,6 +1,7 @@
 import Flutter
 import AVFoundation
 import MediaToolbox
+import CoreMedia
 import UIKit
 import Accelerate
 
@@ -80,7 +81,7 @@ public class SoundwavePlayerPlugin: NSObject, FlutterPlugin, FlutterStreamHandle
     player?.automaticallyWaitsToMinimizeStalling = true
     configureAudioSession()
     registerNotifications()
-    log("player setup done")
+    pluginLog("player setup done")
 
     timeControlObserver = player?.observe(\.timeControlStatus, options: [.new]) { [weak self] player, change in
       guard let self = self else { return }
@@ -101,7 +102,7 @@ public class SoundwavePlayerPlugin: NSObject, FlutterPlugin, FlutterStreamHandle
       default:
         break
       }
-      self.log("timeControlStatus=\(player.timeControlStatus.rawValue) pos=\(player.currentPositionMs)")
+      self.pluginLog("timeControlStatus=\(player.timeControlStatus.rawValue) pos=\(player.currentPositionMs)")
     }
   }
 
@@ -116,7 +117,7 @@ public class SoundwavePlayerPlugin: NSObject, FlutterPlugin, FlutterStreamHandle
     )
     audioTap?.attach(to: item)
     player?.replaceCurrentItem(with: item)
-    log("load url=\(url.absoluteString)")
+    pluginLog("load url=\(url.absoluteString)")
 
     statusObserver = item.observe(\.status, options: [.new, .initial]) { [weak self] item, _ in
       guard let self = self else { return }
@@ -145,7 +146,7 @@ public class SoundwavePlayerPlugin: NSObject, FlutterPlugin, FlutterStreamHandle
         "isBuffering": true,
         "bufferedMs": item.bufferedPositionMs
       ])
-      self.log("buffering bufferedMs=\(item.bufferedPositionMs)")
+      self.pluginLog("buffering bufferedMs=\(item.bufferedPositionMs)")
     }
 
     addPeriodicTimeObserver()
@@ -167,7 +168,7 @@ public class SoundwavePlayerPlugin: NSObject, FlutterPlugin, FlutterStreamHandle
   }
 
   private func emitState(_ dict: [String: Any?]) {
-    log("state event \(dict)")
+    pluginLog("state event \(dict)")
     stateSink?(dict)
   }
 
@@ -203,7 +204,7 @@ public class SoundwavePlayerPlugin: NSObject, FlutterPlugin, FlutterStreamHandle
     }
     player?.pause()
     player?.replaceCurrentItem(with: nil)
-    log("stop called, player released")
+    pluginLog("stop called, player released")
   }
 
   // MARK: - FlutterStreamHandler
@@ -219,6 +220,10 @@ public class SoundwavePlayerPlugin: NSObject, FlutterPlugin, FlutterStreamHandle
 
   private static let methodChannelName = "soundwave_player"
   private static let eventPrefix = "soundwave_player/events"
+
+  private func pluginLog(_ msg: String) {
+    print("Soundwave[iOS]: \(msg)")
+  }
 }
 
 private class StreamHandler: NSObject, FlutterStreamHandler {
@@ -293,7 +298,7 @@ private class AudioTapProcessor {
     tap = tapOut
 
     let params = AVMutableAudioMixInputParameters()
-    params.setTapProcessor(tapOut.takeUnretainedValue())
+    params.audioTapProcessor = tapOut
     let mix = AVMutableAudioMix()
     mix.inputParameters = [params]
     audioMix = mix
@@ -551,7 +556,7 @@ extension SoundwavePlayerPlugin {
             let reason = AVAudioSession.RouteChangeReason(rawValue: reasonValue) else { return }
       if reason == .oldDeviceUnavailable {
         self.emitState(["type": "focusLost", "message": "Audio route changed"])
-        self.log("route change: oldDeviceUnavailable")
+        self.pluginLog("route change: oldDeviceUnavailable")
       }
     }
     backgroundObserver = NotificationCenter.default.addObserver(
@@ -581,7 +586,7 @@ extension SoundwavePlayerPlugin {
     switch type {
     case .began:
       emitState(["type": "focusLost", "message": "Audio interrupted"])
-      log("interruption began")
+      pluginLog("interruption began")
     case .ended:
       let shouldResume = (info[AVAudioSessionInterruptionOptionKey] as? UInt).map {
         AVAudioSession.InterruptionOptions(rawValue: $0).contains(.shouldResume)
@@ -592,7 +597,7 @@ extension SoundwavePlayerPlugin {
           "positionMs": player?.currentPositionMs ?? 0,
           "bufferedMs": player?.currentItem?.bufferedPositionMs ?? 0
         ])
-        log("interruption ended, shouldResume")
+        pluginLog("interruption ended, shouldResume")
       }
     @unknown default:
       break
