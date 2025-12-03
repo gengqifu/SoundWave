@@ -55,6 +55,13 @@ class _SpectrumPainter extends CustomPainter {
     canvas.drawRect(Offset.zero & size, bgPaint);
     if (bins.isEmpty) return;
 
+    double maxMag = 0;
+    for (final b in bins) {
+      final m = b.magnitude.abs();
+      if (m > maxMag) maxMag = m;
+    }
+    if (maxMag <= 0) return;
+
     final paint = Paint()
       ..color = style.barColor
       ..style = PaintingStyle.fill;
@@ -66,8 +73,8 @@ class _SpectrumPainter extends CustomPainter {
 
     for (int i = 0; i < maxBars; i++) {
       final bin = bins[(i * step).floor()];
-      final magnitude = style.logScale ? (bin.magnitude > 0 ? log10(bin.magnitude) : 0) : bin.magnitude;
-      final normalized = magnitude.clamp(0.0, 1.0);
+      final magnitudeRaw = style.logScale ? (bin.magnitude > 0 ? log10(bin.magnitude) : 0) : bin.magnitude;
+      final normalized = (magnitudeRaw / maxMag).clamp(0.0, 1.0);
       final barHeight = normalized * size.height;
       final left = i * barFullWidth;
       final rect = Rect.fromLTWH(left, size.height - barHeight, style.barWidth, barHeight);
