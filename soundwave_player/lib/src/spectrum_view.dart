@@ -55,9 +55,17 @@ class _SpectrumPainter extends CustomPainter {
     canvas.drawRect(Offset.zero & size, bgPaint);
     if (bins.isEmpty) return;
 
+    // 预处理幅度：可选对数压缩，再做归一化，避免单个峰值淹没整体。
+    final processed = <double>[];
     double maxMag = 0;
     for (final b in bins) {
-      final m = b.magnitude.abs();
+      double m = b.magnitude.abs();
+      if (style.logScale) {
+        m = m > 0 ? log10(m) : 0;
+      } else {
+        m = math.sqrt(m); // 轻微压缩动态范围
+      }
+      processed.add(m);
       if (m > maxMag) maxMag = m;
     }
     if (maxMag <= 0) return;
@@ -72,8 +80,8 @@ class _SpectrumPainter extends CustomPainter {
     final step = bins.length / maxBars;
 
     for (int i = 0; i < maxBars; i++) {
-      final bin = bins[(i * step).floor()];
-      final magnitudeRaw = style.logScale ? (bin.magnitude > 0 ? log10(bin.magnitude) : 0) : bin.magnitude;
+      final idx = (i * step).floor();
+      final magnitudeRaw = processed[idx];
       final normalized = (magnitudeRaw / maxMag).clamp(0.0, 1.0);
       final barHeight = normalized * size.height;
       final left = i * barFullWidth;
