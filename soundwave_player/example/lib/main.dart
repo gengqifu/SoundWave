@@ -198,7 +198,13 @@ class _MyAppState extends State<MyApp> {
                       height: 140,
                       child: SpectrumStreamView(
                         buffer: _controller.spectrumBuffer,
-                        style: const SpectrumStyle(),
+                        // 与测试用例一致：线性频率轴 + 幅度对数压缩，便于对齐 golden。
+                        style: const SpectrumStyle(
+                          freqLogScale: false,
+                          logScale: true,
+                          background: Colors.black,
+                          barColor: Colors.cyan,
+                        ),
                       ),
                     ),
                   ],
