@@ -25,6 +25,15 @@ class _MyAppState extends State<MyApp> {
   final TextEditingController _seekController = TextEditingController(text: '0');
   AudioState _state = AudioState.initial();
   bool _initialized = false;
+  final List<String> _testAssets = const [
+    'sine_1k.wav',
+    'square_1k.wav',
+    'saw_1k.wav',
+    'noise_white.wav',
+    'noise_pink.wav',
+    'sweep_20_20k.wav',
+    'silence.wav',
+  ];
 
   @override
   void initState() {
@@ -112,6 +121,23 @@ class _MyAppState extends State<MyApp> {
     }
   }
 
+  Future<void> _useBundledTest(String name) async {
+    try {
+      final data = await rootBundle.load('assets/audio/$name');
+      final dir = await getTemporaryDirectory();
+      final file = File('${dir.path}/$name');
+      await file.writeAsBytes(data.buffer.asUint8List());
+      final path = 'file://${file.path}';
+      setState(() {
+        _sourceController.text = path;
+      });
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text('已拷贝 $name 到本地临时目录')));
+    } catch (e) {
+      _showError('Load $name failed: $e');
+    }
+  }
+
   Future<void> _seek() async {
     try {
       final ms = int.tryParse(_seekController.text.trim()) ?? 0;
@@ -146,6 +172,12 @@ class _MyAppState extends State<MyApp> {
                 spacing: 8,
                 children: [
                   OutlinedButton(onPressed: _useBundledSample, child: const Text('Use bundled sample.mp3')),
+                  ..._testAssets.map(
+                    (name) => OutlinedButton(
+                      onPressed: () => _useBundledTest(name),
+                      child: Text('Use $name'),
+                    ),
+                  ),
                 ],
               ),
               const SizedBox(height: 8),

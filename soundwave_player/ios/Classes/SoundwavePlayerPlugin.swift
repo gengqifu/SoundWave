@@ -253,7 +253,8 @@ private class AudioTapProcessor {
   private var bytesPerFrame: UInt32 = 0
   private var sampleRate: Double = 0
   private var sequence: Int = 0
-  private let queue = DispatchQueue(label: "soundwave.pcm.tap")
+  // 使用全局串行队列，避免实例释放后队列被销毁导致异步访问野指针。
+  private static let tapQueue = DispatchQueue(label: "soundwave.pcm.tap")
   private var timer: DispatchSourceTimer?
   private var frames: [PcmFrame] = []
   private var dropped: Int = 0
@@ -275,6 +276,11 @@ private class AudioTapProcessor {
     self.spectrumSinkProvider = spectrumSinkProvider
   }
 
+  deinit {
+    log("AudioTapProcessor deinit")
+    stopTimer() // 确保在销毁时停止定时器
+  }
+
   func attach(to item: AVPlayerItem) {
     detach()
 
@@ -285,7 +291,7 @@ private class AudioTapProcessor {
 
     var callbacks = MTAudioProcessingTapCallbacks(
       version: kMTAudioProcessingTapCallbacksVersion_0,
-      clientInfo: UnsafeMutableRawPointer(Unmanaged.passUnretained(self).toOpaque()),
+      clientInfo: UnsafeMutableRawPointer(Unmanaged.passRetained(self).toOpaque()),
       init: tapInit,
       finalize: tapFinalize,
       prepare: tapPrepare,
@@ -312,10 +318,11 @@ private class AudioTapProcessor {
   }
 
   func detach() {
+    player?.currentItem?.audioMix = nil // 明确断开 AVPlayerItem 对 audioMix 的引用
     tap = nil
     audioMix = nil
     stopTimer()
-    queue.sync {
+    AudioTapProcessor.tapQueue.sync {
       frames.removeAll()
       dropped = 0
       sequence = 0
@@ -340,7 +347,7 @@ private class AudioTapProcessor {
     let seq = sequence
     sequence += 1
 
-    queue.async { [weak self] in
+    AudioTapProcessor.tapQueue.async { [weak self] in
       guard let self else { return }
       if self.frames.count >= self.maxFrames {
         self.frames.removeFirst()
@@ -364,26 +371,36 @@ private class AudioTapProcessor {
     sampleRate = 0
     sequence = 0
     stopTimer()
-    queue.sync {
+    AudioTapProcessor.tapQueue.sync {
       frames.removeAll()
       dropped = 0
     }
   }
 
   private func startTimer() {
-    if timer != nil { return }
-    let t = DispatchSource.makeTimerSource(queue: queue)
-    t.schedule(deadline: .now(), repeating: .milliseconds(tickMillis))
-    t.setEventHandler { [weak self] in
-      self?.drainAndSend()
+    executeOnQueue {
+      if self.timer != nil { return }
+      let t = DispatchSource.makeTimerSource(queue: AudioTapProcessor.tapQueue)
+      t.schedule(deadline: .now(), repeating: .milliseconds(self.tickMillis))
+      t.setEventHandler { [weak self] in
+        self?.drainAndSend()
+      }
+      t.resume()
+      self.timer = t
     }
-    t.resume()
-    timer = t
   }
 
   private func stopTimer() {
-    timer?.cancel()
-    timer = nil
+    executeOnQueue {
+      guard let t = self.timer else { return }
+      self.timer = nil // 先将引用置空，防止重入
+      t.cancel() // 取消定时器
+      t.setEventHandler {} // 清除事件处理器
+    }
+  }
+
+  private func executeOnQueue(_ block: @escaping () -> Void) {
+    AudioTapProcessor.tapQueue.async(execute: block)
   }
 
   private func drainAndSend() {
@@ -452,7 +469,10 @@ private class AudioTapProcessor {
     tapStorageOut.pointee = clientInfo
   }
 
-  private let tapFinalize: MTAudioProcessingTapFinalizeCallback = { _ in }
+  private let tapFinalize: MTAudioProcessingTapFinalizeCallback = { tap in
+    let storage = MTAudioProcessingTapGetStorage(tap)
+    _ = Unmanaged<AudioTapProcessor>.fromOpaque(storage).takeRetainedValue()
+  }
 
   private let tapPrepare: MTAudioProcessingTapPrepareCallback = { tap, maxFrames, processingFormat in
     let storage = MTAudioProcessingTapGetStorage(tap)
