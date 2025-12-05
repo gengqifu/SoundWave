@@ -68,7 +68,7 @@ await controller.play();
 ## 目录结构
 - `soundwave_player/`：Flutter 插件与示例。
 - `native/`：C/C++ 音频核心（FFmpeg/FFT 等）。
-- `stories/`：迭代故事与任务记录。
+- `stories/<version>/`：迭代故事与任务记录（现有 0.0.1：`stories/0.0.1/`）。
 - `DESIGN.md`：概要设计（架构/时序/交互图）。
 
 ## 可视化配置要点
@@ -85,7 +85,7 @@ await controller.play();
 ## 已知限制与路线
 - 当前聚焦本地播放与可视化，流式播放 Story 暂缓（见 `CHANGELOG.md`）。
 - 弱网/丢包、长时间跑分、录音通路尚未覆盖。
-- 后续里程碑：流式播放 → 频谱交互/缩放 → 性能与稳定性回归（详见 `stories/`）。
+- 后续里程碑：流式播放 → 频谱交互/缩放 → 性能与稳定性回归（详见 `stories/<version>/`）。
 
 ## 贡献
 - 欢迎提交 Issue/PR，遵循 TDD：先写失败用例再实现。
