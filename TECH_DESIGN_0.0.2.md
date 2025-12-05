@@ -9,16 +9,16 @@
 ## 2. 总体架构
 ```mermaid
 flowchart LR
-    Source[Local HTTP Source] -->|Platform Decode| Decoder
-    Decoder -->|PCM 44.1kHz float32 stereo| Buffer[(RingBuffer)]
-    Buffer -->|Throttle Frames| Tap[PCM Tap]
-    Tap -->|FFT pipeline| FFT[FFT Android KissFFT; iOS vDSP or KissFFT]
-    Tap -->|EventChannel PCM| PCMStream[PCM Stream]
-    FFT -->|EventChannel Spectrum| FFTStream[Spectrum Stream]
-    PCMStream --> UIWave[Flutter Waveform]
-    FFTStream --> UISpec[Flutter Spectrum]
-    UIWave -->|MethodChannel| Control[Control (init/play/pause/seek)]
-    UISpec -->|MethodChannel| Control
+    Source[Audio Source] --> Decoder[Platform Decoder]
+    Decoder --> Buffer[PCM Buffer 44.1kHz float32 stereo]
+    Buffer --> Tap[PCM Tap]
+    Tap --> FFT[FFT Engine]
+    Tap --> PCMStream[PCM Stream]
+    FFT --> SpectrumStream[Spectrum Stream]
+    PCMStream --> WaveUI[Waveform UI]
+    SpectrumStream --> SpecUI[Spectrum UI]
+    WaveUI --> Control[Control Channel]
+    SpecUI --> Control
     Tap --> Export[Export WAV CSV JSON]
     Export --> PC[PC Analysis]
 ```
