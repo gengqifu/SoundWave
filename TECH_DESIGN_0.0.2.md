@@ -12,7 +12,7 @@ flowchart LR
     Source[Local/HTTP Source] -->|Platform Decode| Decoder
     Decoder -->|PCM 44.1kHz float32 stereo| Buffer[(RingBuffer)]
     Buffer -->|Throttle Frames| Tap[PCM Tap]
-    Tap -->|Downmix + Window + FFT| FFT[KissFFT (Android)\nvDSP/KissFFT (iOS)]
+    Tap -->|Downmix + Window + FFT| FFT[KissFFT (Android)<br/>vDSP/KissFFT (iOS)]
     Tap -->|EventChannel| PCMStream[PCM Stream]
     FFT -->|EventChannel| FFTStream[Spectrum Stream]
     PCMStream --> UIWave[Flutter UI Waveform]
@@ -98,7 +98,7 @@ flowchart TD
     E --> F[PCM Tap Throttle]
     F --> G[Downmix (L+R)/2]
     G --> H[Window Hann/Hamming]
-    H --> I[FFT\nAndroid KissFFT\niOS vDSP 或 KissFFT]
+    H --> I[FFT<br/>Android KissFFT<br/>iOS vDSP 或 KissFFT]
     I --> J[Power Norm 2/(N*E_window)]
     J --> K[EventChannel Spectrum]
     F --> L[EventChannel PCM]
