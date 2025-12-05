@@ -17,6 +17,7 @@
 - **DevOps Agent**：CI 配置（格式化、静态检查、单测、集成测）；构建产物分发；依赖管理与缓存（Flutter/CMake/FFmpeg 预编译包）；环境维护（Flutter SDK 路径/权限、可写 HOME 目录、Android SDK/NDK/CMake 版本一致性）。
 
 ## 3. TDD 开发准则
+- Story 编写与执行：遵循 TDD 模板，参考 `docs/stories/0.0.1/story-01-plugin.md`，先写失败用例（含验收标准/DoD），再实现与回归。
 - 用例先行：每个功能/缺陷先编写失败的单测/集成测，再实现代码使之通过。
 - 分层测试：
   - Dart 层：状态管理、UI 组件的绘制/交互逻辑单测（可使用 Golden/Widget Test）。
