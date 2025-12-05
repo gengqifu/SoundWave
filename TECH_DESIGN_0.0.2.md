@@ -91,23 +91,22 @@ sequenceDiagram
 ## 6. 流程图（播放+FFT）
 ```mermaid
 flowchart TD
-    A[Init 44.1kHz/float32/stereo] --> B[Load Source]
+    A[Init config 44.1kHz float32 stereo] --> B[Load source]
     B --> C[Play]
-    C --> D[Decoder PCM Out]
+    C --> D[Decoder PCM out]
     D --> E[RingBuffer]
-    E --> F[PCM Tap Throttle]
-    F --> G[Downmix (L+R)/2]
+    E --> F[PCM Tap throttle]
+    F --> G[Downmix to mono]
     G --> H[Window Hann/Hamming]
-    H --> I[FFT<br/>Android KissFFT<br/>iOS vDSP 或 KissFFT]
-    I --> J[Power Norm 2/(N*E_window)]
-    J --> K[EventChannel Spectrum]
-    F --> L[EventChannel PCM]
-    K --> M[Flutter UI Spectrum]
-    L --> N[Flutter UI Waveform]
-    M --> O[Display/Interact]
-    N --> O
-    F --> P[Export WAV/CSV/JSON]
-    P --> Q[PC Analysis]
+    H --> I[FFT engine]
+    I --> J[Spectrum event]
+    F --> K[PCM event]
+    J --> L[Spectrum UI]
+    K --> M[Waveform UI]
+    L --> N[Display]
+    M --> N
+    F --> P[Export WAV CSV JSON]
+    P --> Q[PC analysis]
 ```
 
 ## 7. 接口与配置要点
