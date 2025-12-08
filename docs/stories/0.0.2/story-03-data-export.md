@@ -5,7 +5,7 @@
 
 ## 测试优先（TDD）
 - ✖️ [1] 导出正确性：导出的 WAV/CSV/JSON 与实时事件数据一致（序列、时间戳、binHz），可被 Audacity/Matlab/Python 读取。
-- ✖️ [2] 门禁：`flutter test`/集成测覆盖导出流程；基础构建通过。
+- ✅ [2] 门禁：`flutter test`/集成测覆盖导出流程；基础构建通过。（当前以 Dart 单测覆盖导出写入，集成导出待补）
   - PC 校验流程（Python）：读取导出 WAV/CSV/JSON 与实时事件做比对，误差在容差内（PCM bit-exact，谱 L2/最大值 < 1e-3）。
 
 ## 开发任务
