@@ -8,7 +8,7 @@
 - ✅ [2] 门禁：`flutter test` 覆盖 FFT 事件解析；Native 单测/集成测（gtest/Instrumentation）通过。（Android JUnit 覆盖 FFT，iOS 待真机验证）
 
 ## 开发任务
-- ✖️ [3] Android 接入 JNI + KissFFT，移除 Kotlin FFT 主路径；定义 JNI 输入/输出（立体声 float PCM，nfft=1024，Hann，归一化公式一致）。
+- ✅ [3] Android 接入 JNI + KissFFT，移除 Kotlin FFT 主路径；定义 JNI 输入/输出（立体声 float PCM，nfft=1024，Hann，归一化公式一致）。JNI 加载失败时回退 Kotlin 实现。
 - ✖️ [4] iOS 保持 vDSP 默认，增加 KissFFT 可选开关；窗口/归一化（例如 2/(N*E_window)）与 Android 对齐，可配置 overlap。
 - ✖️ [5] 跨端一致性测试与阈值校验：统一窗口/nfft/overlap/归一化，用同一组测试信号（单频/双频/白噪/扫频）做误差评估（L2/最大值）。
 

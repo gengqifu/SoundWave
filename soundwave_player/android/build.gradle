@@ -45,8 +45,19 @@ android {
         test.java.srcDirs += "src/test/kotlin"
     }
 
+    externalNativeBuild {
+        cmake {
+            path "src/main/cpp/CMakeLists.txt"
+        }
+    }
+
     defaultConfig {
         minSdk = 21
+        externalNativeBuild {
+            cmake {
+                // Pass sample rate/channel defaults if needed later.
+            }
+        }
     }
 
     dependencies {

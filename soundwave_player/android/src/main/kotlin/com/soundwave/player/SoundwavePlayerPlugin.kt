@@ -470,8 +470,7 @@ class SoundwavePlayerPlugin : FlutterPlugin, MethodCallHandler {
   }
 
   private fun computeSpectrum(samples: FloatArray): Pair<FloatArray, Double>? {
-    val spec = FftUtils.computeSpectrum(samples, sampleRate) ?: return null
-    return spec.bins to spec.binHz
+    return NativeFft.compute(samples, sampleRate)
   }
 
   companion object {
