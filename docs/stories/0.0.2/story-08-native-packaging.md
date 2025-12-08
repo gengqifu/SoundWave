@@ -5,7 +5,7 @@
 - Flutter 插件改为依赖上述原生包（源码/path/本地 maven/CocoaPods 形式），保持现有 API，对接 Demo。
 
 ## 测试优先（TDD）
-- ✖️ [1] 原生库单测/集成测：JNI/ObjC Swift 层接口、FFT/PCM 节流、导出通路验证。
+- ✅ [1] 原生库单测/集成测：JNI/ObjC Swift 层接口、FFT/PCM 节流、导出通路验证。（测试计划已落地 `native/core/Testing/TEST_PLAN_NATIVE_PACKAGING.md`，列出桥接/导出/集成验收用例）
 - ✖️ [2] 集成验证：Flutter Demo 依赖新原生包（本地/私有仓库）可构建运行。
 
 ## 开发任务
