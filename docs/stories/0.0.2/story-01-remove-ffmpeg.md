@@ -12,7 +12,7 @@
 ## 开发任务
 - ✅ [5] 清理 FFmpeg 预编库、CMake/Gradle/Podspec 引用，移除 native 解码路径。
 - ✅ [6] 平台解码输出对齐：配置采样率/位深/通道，必要时重采样与 downmix。
-- ✖️ [7] 更新/补充 native 测试脚本与集成测用例（gtest/NDK），确保替换后可执行。
+- ✅ [7] 更新/补充 native 测试脚本与集成测用例（gtest/NDK），确保替换后可执行。
 - ✅ [8] 更新文档与配置（README/CHANGELOG），声明不再依赖 FFmpeg。
 
 ## 完成标准（DoD）
