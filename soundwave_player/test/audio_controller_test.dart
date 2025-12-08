@@ -120,5 +120,42 @@ void main() {
       final res = controller.pcmBuffer.drain(10);
       expect(res.frames.map((f) => f.sequence), [2]);
     });
+
+    test('visualization toggle pauses/resumes buffers', () async {
+      await controller.init(
+          const SoundwaveConfig(sampleRate: 44100, bufferSize: 1024, channels: 2));
+
+      controller.setVisualizationEnabled(false);
+      platform.emitPcm(<String, Object?>{
+        'sequence': 1,
+        'timestampMs': 0,
+        'samples': <double>[0.1],
+      });
+      platform.emitSpectrum(<String, Object?>{
+        'sequence': 1,
+        'timestampMs': 0,
+        'bins': <double>[0.2],
+        'binHz': 10.0,
+      });
+      await Future<void>.delayed(const Duration(milliseconds: 5));
+      expect(controller.pcmBuffer.drain(10).frames, isEmpty);
+      expect(controller.spectrumBuffer.drain(10).frames, isEmpty);
+
+      controller.setVisualizationEnabled(true);
+      platform.emitPcm(<String, Object?>{
+        'sequence': 2,
+        'timestampMs': 1,
+        'samples': <double>[0.3],
+      });
+      platform.emitSpectrum(<String, Object?>{
+        'sequence': 2,
+        'timestampMs': 1,
+        'bins': <double>[0.4],
+        'binHz': 10.0,
+      });
+      await Future<void>.delayed(const Duration(milliseconds: 5));
+      expect(controller.pcmBuffer.drain(10).frames.map((f) => f.sequence), [2]);
+      expect(controller.spectrumBuffer.drain(10).frames.map((f) => f.sequence), [2]);
+    });
   });
 }

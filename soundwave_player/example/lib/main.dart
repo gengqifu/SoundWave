@@ -25,6 +25,7 @@ class _MyAppState extends State<MyApp> {
   final TextEditingController _seekController = TextEditingController(text: '0');
   AudioState _state = AudioState.initial();
   bool _initialized = false;
+  bool _backdoorEnabled = false;
   final List<String> _testAssets = const [
     'sine_1k.wav',
     'square_1k.wav',
@@ -61,6 +62,8 @@ class _MyAppState extends State<MyApp> {
             'pos=${s.position.inMilliseconds} dur=${s.duration.inMilliseconds} err=${s.error}');
       });
       setState(() => _initialized = true);
+      // 默认关闭后门可视化，需要长按标题开启，避免对播放链路的干扰。
+      _controller.setVisualizationEnabled(_backdoorEnabled);
       debugPrint('Demo: init() done');
     } catch (e) {
       _showError('Init failed: $e');
@@ -154,12 +157,27 @@ class _MyAppState extends State<MyApp> {
     ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg)));
   }
 
+  void _toggleBackdoor() {
+    if (!_initialized) {
+      _showError('请先 Init 再开启可视化');
+      return;
+    }
+    final enabled = !_backdoorEnabled;
+    setState(() => _backdoorEnabled = enabled);
+    _controller.setVisualizationEnabled(enabled);
+    ScaffoldMessenger.of(context)
+        .showSnackBar(SnackBar(content: Text(enabled ? '已开启可视化后门' : '已关闭可视化后门')));
+  }
+
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
       home: Scaffold(
         appBar: AppBar(
-          title: const Text('SoundWave Demo (local playback)'),
+          title: GestureDetector(
+            onLongPress: _toggleBackdoor,
+            child: const Text('SoundWave Demo (local playback)'),
+          ),
         ),
         body: Padding(
           padding: const EdgeInsets.all(16),
@@ -213,7 +231,7 @@ class _MyAppState extends State<MyApp> {
               Text('Duration: ${_state.duration.inMilliseconds} ms'),
               if (_state.error != null) Text('Error: ${_state.error}', style: const TextStyle(color: Colors.red)),
               const SizedBox(height: 12),
-              if (_initialized)
+              if (_initialized && _backdoorEnabled)
                 Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
@@ -243,6 +261,8 @@ class _MyAppState extends State<MyApp> {
                     ),
                   ],
                 )
+              else if (_initialized)
+                const Text('长按标题开启可视化后门（波形/频谱）'),
               else
                 const Text('Init 后显示波形/频谱'),
             ],

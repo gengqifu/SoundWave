@@ -26,6 +26,7 @@ class AudioController {
   DataExporter? _exporter;
   StreamSubscription<dynamic>? _exportPcmSub;
   StreamSubscription<dynamic>? _exportSpectrumSub;
+  bool _visualizationEnabled = true;
 
   /// 状态流（后续实现）。
   Stream<AudioState> get states => _stateController.stream;
@@ -139,6 +140,20 @@ class AudioController {
           _resetBuffers();
           _emit(_state.copyWith(position: position, error: null));
         });
+  }
+
+  /// 控制可视化订阅开关：关闭时暂停缓冲队列，避免 UI/后门读取。
+  void setVisualizationEnabled(bool enabled) {
+    _ensureInitialized();
+    if (_visualizationEnabled == enabled) return;
+    _visualizationEnabled = enabled;
+    if (!enabled) {
+      _pcmBuffer?.mute();
+      _spectrumBuffer?.mute();
+    } else {
+      _pcmBuffer?.unmute();
+      _spectrumBuffer?.unmute();
+    }
   }
 
   void dispose() {

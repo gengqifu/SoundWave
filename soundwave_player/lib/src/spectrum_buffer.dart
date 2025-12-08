@@ -23,8 +23,10 @@ class SpectrumBuffer {
   int _lastTimestampMs = -1;
   int _version = 0;
   bool _paused = false;
+  bool _muted = false;
 
   void _handleEvent(dynamic event) {
+    if (_muted) return;
     if (event is! Map) return;
     final droppedBefore = (event['droppedBefore'] as num?)?.toInt() ?? 0;
     final dropped = (event['dropped'] as bool?) ?? false;
@@ -70,6 +72,15 @@ class SpectrumBuffer {
 
   void resume() {
     _paused = false;
+  }
+
+  void mute() {
+    _muted = true;
+    reset();
+  }
+
+  void unmute() {
+    _muted = false;
   }
 
   bool get paused => _paused;
