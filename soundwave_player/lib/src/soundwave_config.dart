@@ -12,6 +12,7 @@ class SoundwaveConfig {
   final bool? enableRangeRequests;
   final int? ringBufferMs;
   final bool? enableSkiaTracing;
+  final ExportConfig? export;
 
   const SoundwaveConfig({
     required this.sampleRate,
@@ -27,6 +28,7 @@ class SoundwaveConfig {
     this.enableRangeRequests,
     this.ringBufferMs,
     this.enableSkiaTracing,
+    this.export,
   });
 
   void validate() {
@@ -63,6 +65,7 @@ class SoundwaveConfig {
     if (ringBufferMs != null && ringBufferMs! <= 0) {
       throw ArgumentError.value(ringBufferMs, 'ringBufferMs', 'must be > 0');
     }
+    export?.validate();
   }
 
   Map<String, Object?> toMap() {
@@ -93,6 +96,38 @@ class SoundwaveConfig {
     if (visualization.isNotEmpty) {
       map['visualization'] = visualization;
     }
+    if (export != null) {
+      map['export'] = export!.toMap();
+    }
     return map;
+  }
+}
+
+class ExportConfig {
+  const ExportConfig({
+    required this.directoryPath,
+    this.filePrefix = 'soundwave',
+    this.enablePcm = true,
+    this.enableSpectrum = true,
+  });
+
+  final String directoryPath;
+  final String filePrefix;
+  final bool enablePcm;
+  final bool enableSpectrum;
+
+  void validate() {
+    if (directoryPath.trim().isEmpty) {
+      throw ArgumentError.value(directoryPath, 'directoryPath', 'cannot be empty');
+    }
+  }
+
+  Map<String, Object?> toMap() {
+    return {
+      'directoryPath': directoryPath,
+      'filePrefix': filePrefix,
+      'enablePcm': enablePcm,
+      'enableSpectrum': enableSpectrum,
+    };
   }
 }

@@ -6,6 +6,9 @@ import 'soundwave_exception.dart';
 import 'soundwave_player.dart';
 import 'pcm_buffer.dart';
 import 'spectrum_buffer.dart';
+import 'export/data_exporter.dart';
+import 'pcm_frame.dart';
+import 'spectrum_frame.dart';
 
 /// Dart 层控制器占位实现：封装 SoundwavePlayer，管理状态流。
 class AudioController {
@@ -20,6 +23,9 @@ class AudioController {
   StreamSubscription<dynamic>? _stateSubscription;
   PcmBuffer? _pcmBuffer;
   SpectrumBuffer? _spectrumBuffer;
+  DataExporter? _exporter;
+  StreamSubscription<dynamic>? _exportPcmSub;
+  StreamSubscription<dynamic>? _exportSpectrumSub;
 
   /// 状态流（后续实现）。
   Stream<AudioState> get states => _stateController.stream;
@@ -53,6 +59,24 @@ class AudioController {
     _stateSubscription = _platform.stateEvents.listen(_handlePlatformEvent);
     _pcmBuffer = PcmBuffer(stream: _platform.pcmEvents, maxFrames: 60);
     _spectrumBuffer = SpectrumBuffer(stream: _platform.spectrumEvents, maxFrames: 60);
+    if (config.export != null) {
+      final exp = config.export!;
+      _exporter = DataExporter(DataExportOptions(
+        directoryPath: exp.directoryPath,
+        pcmWavFileName: '${exp.filePrefix}_pcm.wav',
+        spectrumCsvFileName: '${exp.filePrefix}_spectrum.csv',
+        spectrumJsonFileName: '${exp.filePrefix}_spectrum.jsonl',
+        sampleRate: config.sampleRate,
+        channels: config.channels,
+      ));
+      await _exporter!.init();
+      if (exp.enablePcm) {
+        _exportPcmSub = _platform.pcmEvents.listen(_handleExportPcm);
+      }
+      if (exp.enableSpectrum) {
+        _exportSpectrumSub = _platform.spectrumEvents.listen(_handleExportSpectrum);
+      }
+    }
     _initialized = true;
     _emit(_state);
   }
@@ -119,6 +143,9 @@ class AudioController {
     _stateSubscription?.cancel();
     _pcmBuffer?.dispose();
     _spectrumBuffer?.dispose();
+    _exportPcmSub?.cancel();
+    _exportSpectrumSub?.cancel();
+    _exporter?.close();
     _stateController.close();
   }
 
@@ -205,6 +232,28 @@ class AudioController {
       final message = event['message'] as String? ?? 'Unknown error';
       _emit(_state.copyWith(error: message));
     }
+  }
+
+  void _handleExportPcm(dynamic event) {
+    if (event is! Map) return;
+    final samplesRaw = event['samples'];
+    final seq = (event['sequence'] as num?)?.toInt();
+    final ts = (event['timestampMs'] as num?)?.toInt();
+    if (seq == null || ts == null || samplesRaw is! List) return;
+    final samples = samplesRaw.whereType<num>().map((n) => n.toDouble()).toList(growable: false);
+    _exporter?.addPcmFrame(PcmFrame(sequence: seq, timestampMs: ts, samples: samples));
+  }
+
+  void _handleExportSpectrum(dynamic event) {
+    if (event is! Map) return;
+    final binsRaw = event['bins'];
+    final seq = (event['sequence'] as num?)?.toInt();
+    final ts = (event['timestampMs'] as num?)?.toInt();
+    final binHz = (event['binHz'] as num?)?.toDouble() ?? 0.0;
+    if (seq == null || ts == null || binsRaw is! List) return;
+    final bins = binsRaw.whereType<num>().map((n) => n.toDouble()).toList(growable: false);
+    _exporter?.addSpectrumFrame(
+        SpectrumFrame(sequence: seq, timestampMs: ts, bins: bins, binHz: binHz));
   }
 
   void _emit(AudioState state) {
