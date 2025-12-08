@@ -4,7 +4,7 @@
 - Android 使用 KissFFT（JNI），iOS 默认 vDSP（提供可选 KissFFT），统一窗口/归一化/输出格式，跨端谱差异 < 1e-3。
 
 ## 测试优先（TDD）
-- ✖️ [1] 频点正确性：单频/双频/白噪/扫频在 Android KissFFT、iOS vDSP/KissFFT 上对齐，误差 < 1e-3（支持 L2/最大值度量）。
+- ✅ [1] 频点正确性：单频/双频/白噪/扫频在 Android KissFFT、iOS vDSP/KissFFT 上对齐，误差 < 1e-3（支持 L2/最大值度量）。Android 本地单测覆盖单/双频，iOS 归一化对齐（待真机复核）。
 - ✖️ [2] 门禁：`flutter test` 覆盖 FFT 事件解析；Native 单测/集成测（gtest/Instrumentation）通过。
 
 ## 开发任务

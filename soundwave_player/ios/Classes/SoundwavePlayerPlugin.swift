@@ -530,10 +530,12 @@ private class AudioTapProcessor {
       windowed[i] = Float(samples[i])
     }
 
-    // Apply Hann window
+    // Apply Hann window with normalization factor 2/(N * E_window)
     var hann = [Float](repeating: 0, count: n)
     vDSP_hann_window(&hann, vDSP_Length(n), Int32(vDSP_HANN_NORM))
     vDSP_vmul(windowed, 1, hann, 1, &windowed, 1, vDSP_Length(n))
+    var energy: Float = 0
+    vDSP_measqv(hann, 1, &energy, vDSP_Length(n))
 
     let log2n = vDSP_Length(log2(Float(n)))
     guard let setup = vDSP_create_fftsetup(log2n, FFTRadix(FFT_RADIX2)) else { return nil }
@@ -551,6 +553,9 @@ private class AudioTapProcessor {
     var magnitudes = [Float](repeating: 0, count: n/2)
     vDSP_zvabs(&split, 1, &magnitudes, 1, vDSP_Length(n/2))
     vDSP_destroy_fftsetup(setup)
+
+    let scale = energy > 0 ? Float(2.0) / (Float(n) * energy) : 0
+    vDSP_vsmul(magnitudes, 1, [scale], &magnitudes, 1, vDSP_Length(n/2))
 
     let binHz = sampleRate / Double(n)
     return (magnitudes.map { Double($0) }, binHz)
