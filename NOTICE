@@ -1,0 +1,7 @@
+SoundWave
+Copyright (c) 2024 SoundWave Contributors
+
+This product includes software developed at:
+- Google ExoPlayer (Apache-2.0)
+- KissFFT (BSD-3-Clause)
+- Apple vDSP (Apple SDK proprietary)
