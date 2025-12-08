@@ -12,6 +12,9 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      - name: License compliance check
+        run: ./tools/check_license.sh
+
       - name: Set up Flutter
         uses: subosito/flutter-action@v2
         with:
