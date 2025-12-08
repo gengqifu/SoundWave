@@ -16,7 +16,7 @@
 - ✅ [8] 更新文档与配置（README/CHANGELOG），声明不再依赖 FFmpeg。
 
 ## 完成标准（DoD）
-- ✖️ [9] 本地/HTTP 播放用例通过，PCM 事件格式与节流保持一致。
+- ✅ [9] 本地/HTTP 播放用例通过，PCM 事件格式与节流保持一致。（HTTP 在联网设备上补测确认）
 - ✅ [10] Native gtest/集成测通过，采样率/位深/通道与 downmix/重采样路径符合预期。
 - ✅ [11] `flutter analyze`、`flutter test` 通过；Android/iOS 构建通过。
 - ✅ [12] 文档更新到位，FFmpeg 相关文件与引用清零。***
