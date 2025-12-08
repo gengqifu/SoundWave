@@ -14,5 +14,5 @@
 
 ## 完成标准（DoD）
 - ✅ [6] 合规检查通过，仓库无 GPL 文件/引用。（`tools/check_license.sh` 已通过，LICENSE/NOTICE/DEPENDENCIES 就绪）
-- ✖️ [7] NOTICE/DEPENDENCIES 覆盖关键依赖并纳入发布流程。
+- ✅ [7] NOTICE/DEPENDENCIES 覆盖关键依赖并纳入发布流程。（根目录及 `soundwave_player/` 内均包含 NOTICE/DEPENDENCIES，随插件发布可见）
 - ✖️ [8] 文档更新完成，构建/测试门禁通过。***

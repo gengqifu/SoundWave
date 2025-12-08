@@ -1,0 +1,5 @@
+SoundWave Flutter plugin third-party components:
+
+- ExoPlayer (Apache-2.0) — https://github.com/google/ExoPlayer
+- KissFFT (BSD-3-Clause) — https://github.com/mborgerding/kissfft
+- Apple vDSP (Proprietary, part of Apple Accelerate/vDSP)
