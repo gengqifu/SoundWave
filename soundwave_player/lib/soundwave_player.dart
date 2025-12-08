@@ -18,3 +18,4 @@ export 'src/waveform_stream_view.dart';
 export 'src/waveform_style.dart';
 export 'src/spectrum_view.dart';
 export 'src/spectrum_stream_view.dart';
+export 'src/export/data_exporter.dart';
