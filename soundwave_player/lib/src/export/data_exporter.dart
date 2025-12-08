@@ -1,3 +1,5 @@
+import 'dart:async';
+import 'dart:collection';
 import 'dart:convert';
 import 'dart:io';
 import 'dart:typed_data';
@@ -13,6 +15,8 @@ class DataExportOptions {
     this.spectrumJsonFileName = 'spectrum_export.jsonl',
     this.sampleRate = 44100,
     this.channels = 2,
+    this.maxPendingPcmFrames = 32,
+    this.maxPendingSpectrumFrames = 32,
   });
 
   /// 目标目录（需调用方确保可写，如 Android externalFilesDir / iOS documents）。
@@ -22,6 +26,8 @@ class DataExportOptions {
   final String spectrumJsonFileName;
   final int sampleRate;
   final int channels;
+  final int maxPendingPcmFrames;
+  final int maxPendingSpectrumFrames;
 }
 
 /// 管理 PCM 和谱数据导出（WAV/CSV/JSONL）。
@@ -31,6 +37,15 @@ class DataExporter {
   final DataExportOptions options;
   PcmWavWriter? _pcmWriter;
   SpectrumWriter? _spectrumWriter;
+  final ListQueue<_FrameJob<PcmFrame>> _pcmQueue = ListQueue<_FrameJob<PcmFrame>>();
+  final ListQueue<_FrameJob<SpectrumFrame>> _spectrumQueue =
+      ListQueue<_FrameJob<SpectrumFrame>>();
+  int _pcmDropped = 0;
+  int _spectrumDropped = 0;
+  bool _pcmDraining = false;
+  bool _spectrumDraining = false;
+  Future<void>? _pcmDrainFuture;
+  Future<void>? _spectrumDrainFuture;
 
   Future<void> init() async {
     final dir = Directory(options.directoryPath);
@@ -49,16 +64,97 @@ class DataExporter {
   }
 
   Future<void> addPcmFrame(PcmFrame frame) {
-    return _pcmWriter?.write(frame.samples) ?? Future.value();
+    final writer = _pcmWriter;
+    if (writer == null) return Future.value();
+    final job = _FrameJob<PcmFrame>(frame);
+    _enqueuePcm(job);
+    _kickPcmDrain(writer);
+    return job.completer.future;
   }
 
   Future<void> addSpectrumFrame(SpectrumFrame frame) {
-    return _spectrumWriter?.write(frame) ?? Future.value();
+    final writer = _spectrumWriter;
+    if (writer == null) return Future.value();
+    final job = _FrameJob<SpectrumFrame>(frame);
+    _enqueueSpectrum(job);
+    _kickSpectrumDrain(writer);
+    return job.completer.future;
   }
 
   Future<void> close() async {
+    await _waitForPending();
     await _pcmWriter?.close();
     await _spectrumWriter?.close();
+  }
+
+  int get droppedPcmFrames => _pcmDropped;
+  int get droppedSpectrumFrames => _spectrumDropped;
+
+  void _enqueuePcm(_FrameJob<PcmFrame> job) {
+    _pcmQueue.addLast(job);
+    if (_pcmQueue.length > options.maxPendingPcmFrames) {
+      final removed = _pcmQueue.removeFirst();
+      _pcmDropped++;
+      removed.completer.complete(); // 视为已处理，防止等待泄漏。
+    }
+  }
+
+  void _enqueueSpectrum(_FrameJob<SpectrumFrame> job) {
+    _spectrumQueue.addLast(job);
+    if (_spectrumQueue.length > options.maxPendingSpectrumFrames) {
+      final removed = _spectrumQueue.removeFirst();
+      _spectrumDropped++;
+      removed.completer.complete();
+    }
+  }
+
+  void _kickPcmDrain(PcmWavWriter writer) {
+    if (_pcmDraining) return;
+    _pcmDraining = true;
+    _pcmDrainFuture = Future<void>(() async {
+      while (_pcmQueue.isNotEmpty) {
+        final job = _pcmQueue.removeFirst();
+        try {
+          await writer.write(job.frame.samples);
+          job.completer.complete();
+        } catch (e, st) {
+          job.completer.completeError(e, st);
+        }
+      }
+      _pcmDraining = false;
+      if (_pcmQueue.isNotEmpty) {
+        _kickPcmDrain(writer);
+      }
+    });
+  }
+
+  void _kickSpectrumDrain(SpectrumWriter writer) {
+    if (_spectrumDraining) return;
+    _spectrumDraining = true;
+    _spectrumDrainFuture = Future<void>(() async {
+      while (_spectrumQueue.isNotEmpty) {
+        final job = _spectrumQueue.removeFirst();
+        try {
+          await writer.write(job.frame);
+          job.completer.complete();
+        } catch (e, st) {
+          job.completer.completeError(e, st);
+        }
+      }
+      _spectrumDraining = false;
+      if (_spectrumQueue.isNotEmpty) {
+        _kickSpectrumDrain(writer);
+      }
+    });
+  }
+
+  Future<void> _waitForPending() async {
+    if (_pcmDrainFuture != null) {
+      await _pcmDrainFuture;
+    }
+    if (_spectrumDrainFuture != null) {
+      await _spectrumDrainFuture;
+    }
   }
 }
 
@@ -182,4 +278,11 @@ class SpectrumWriter {
     _csvSink = null;
     _jsonSink = null;
   }
+}
+
+class _FrameJob<T> {
+  _FrameJob(this.frame) : completer = Completer<void>();
+
+  final T frame;
+  final Completer<void> completer;
 }

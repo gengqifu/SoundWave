@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'dart:io';
 import 'dart:math' as math;
+import 'dart:typed_data';
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:soundwave_player/soundwave_player.dart';
@@ -62,6 +63,52 @@ void main() {
       final obj = json.decode(jsonl.first) as Map<String, dynamic>;
       expect(obj['sequence'], 1);
       expect((obj['bins'] as List).length, bins.length);
+    });
+
+    test('drops oldest pcm frames when queue is full', () async {
+      final exporter = DataExporter(DataExportOptions(
+        directoryPath: tmp.path,
+        maxPendingPcmFrames: 2,
+      ));
+      await exporter.init();
+      exporter.addPcmFrame(
+          PcmFrame(sequence: 0, timestampMs: 0, samples: [0, 1]));
+      exporter.addPcmFrame(
+          PcmFrame(sequence: 1, timestampMs: 1, samples: [2, 3]));
+      exporter.addPcmFrame(
+          PcmFrame(sequence: 2, timestampMs: 2, samples: [4, 5]));
+      await exporter.close();
+
+      expect(exporter.droppedPcmFrames, 1);
+      final bytes = await File('${tmp.path}/pcm_export.wav').readAsBytes();
+      final dataBytes = bytes.sublist(44);
+      final dataView = ByteData.sublistView(dataBytes);
+      final samples = dataView.buffer
+          .asFloat32List(dataView.offsetInBytes, dataView.lengthInBytes ~/ 4)
+          .toList();
+      expect(samples, [2, 3, 4, 5]);
+    });
+
+    test('drops oldest spectrum frames when queue is full', () async {
+      final exporter = DataExporter(DataExportOptions(
+        directoryPath: tmp.path,
+        maxPendingSpectrumFrames: 2,
+      ));
+      await exporter.init();
+      exporter.addSpectrumFrame(
+          SpectrumFrame(sequence: 1, timestampMs: 10, bins: [0.1], binHz: 10));
+      exporter.addSpectrumFrame(
+          SpectrumFrame(sequence: 2, timestampMs: 20, bins: [0.2], binHz: 10));
+      exporter.addSpectrumFrame(
+          SpectrumFrame(sequence: 3, timestampMs: 30, bins: [0.3], binHz: 10));
+      await exporter.close();
+
+      expect(exporter.droppedSpectrumFrames, 1);
+      final csvLines =
+          await File('${tmp.path}/spectrum_export.csv').readAsLines();
+      expect(csvLines.length, 3); // header + 2 data rows
+      expect(csvLines[1].startsWith('2,'), isTrue);
+      expect(csvLines[2].startsWith('3,'), isTrue);
     });
   });
 }

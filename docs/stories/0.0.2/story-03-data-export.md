@@ -10,7 +10,7 @@
 
 ## 开发任务
 - ✅ [3] 设计导出接口与存储路径/权限（iOS/Android），实现 PCM/WAV、Spectrum/CSV/JSON 写入。（AudioController 接入 ExportConfig，事件导出可用）
-- ✖️ [4] 与节流/序号对齐，确保导出不影响实时链路性能。
+- ✅ [4] 与节流/序号对齐，确保导出不影响实时链路性能。（导出队列有限长，超限丢弃最旧帧并保持写入有序）
 - ✖️ [5] 文档与示例更新：说明导出格式、字段、开启方式。
   - 路径与权限：Android 使用 `getExternalFilesDir(Environment.DIRECTORY_MUSIC)`（免权限）；iOS 使用 `documentDirectory`；处理磁盘不足/文件大小上限。
   - 配置开关：`SoundwaveConfig` 增加导出开关/目录/文件前缀，默认关闭；避免影响实时链路性能。
