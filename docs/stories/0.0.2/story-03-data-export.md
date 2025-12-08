@@ -9,7 +9,7 @@
   - PC 校验流程（Python）：读取导出 WAV/CSV/JSON 与实时事件做比对，误差在容差内（PCM bit-exact，谱 L2/最大值 < 1e-3）。
 
 ## 开发任务
-- ✖️ [3] 设计导出接口与存储路径/权限（iOS/Android），实现 PCM/WAV、Spectrum/CSV/JSON 写入。
+- ✅ [3] 设计导出接口与存储路径/权限（iOS/Android），实现 PCM/WAV、Spectrum/CSV/JSON 写入。（AudioController 接入 ExportConfig，事件导出可用）
 - ✖️ [4] 与节流/序号对齐，确保导出不影响实时链路性能。
 - ✖️ [5] 文档与示例更新：说明导出格式、字段、开启方式。
   - 路径与权限：Android 使用 `getExternalFilesDir(Environment.DIRECTORY_MUSIC)`（免权限）；iOS 使用 `documentDirectory`；处理磁盘不足/文件大小上限。
