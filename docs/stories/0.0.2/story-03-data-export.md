@@ -11,11 +11,25 @@
 ## 开发任务
 - ✅ [3] 设计导出接口与存储路径/权限（iOS/Android），实现 PCM/WAV、Spectrum/CSV/JSON 写入。（AudioController 接入 ExportConfig，事件导出可用）
 - ✅ [4] 与节流/序号对齐，确保导出不影响实时链路性能。（导出队列有限长，超限丢弃最旧帧并保持写入有序）
-- ✖️ [5] 文档与示例更新：说明导出格式、字段、开启方式。
-  - 路径与权限：Android 使用 `getExternalFilesDir(Environment.DIRECTORY_MUSIC)`（免权限）；iOS 使用 `documentDirectory`；处理磁盘不足/文件大小上限。
-  - 配置开关：`SoundwaveConfig` 增加导出开关/目录/文件前缀，默认关闭；避免影响实时链路性能。
-  - 格式细节：WAV 44.1kHz/float32/stereo RIFF 头；CSV/JSON 包含 `sequence`,`timestampMs`,`binHz`,`bins[]`；字段顺序/单位明确。
-  - 性能约束：导出线程/队列与节流对齐，限制批次/缓冲写入，避免阻塞 PCM/谱推送。
+- ✅ [5] 文档与示例更新：说明导出格式、字段、开启方式。
+  - 路径与权限：Android 使用 `getExternalFilesDir(Environment.DIRECTORY_MUSIC)`（免权限）；iOS 使用 `documentDirectory`；注意磁盘不足/文件大小上限。
+  - 配置开关：`SoundwaveConfig.export` 提供 `directoryPath/filePrefix/enablePcm/enableSpectrum`，默认关闭；与导出队列上限对齐（PCM/Spectrum 默认各 32 帧，超限丢弃最旧）。
+  - 格式细节：WAV 44.1kHz/float32/stereo RIFF 头；CSV/JSONL 包含 `sequence,timestampMs,binHz,bin0...`；JSONL 按行输出字段同 CSV。
+  - 示例启用：
+    ```dart
+    await controller.init(SoundwaveConfig(
+      sampleRate: 44100,
+      bufferSize: 2048,
+      channels: 2,
+      export: const ExportConfig(
+        directoryPath: '<app-documents-or-external-files>',
+        filePrefix: 'session01',
+        enablePcm: true,
+        enableSpectrum: true,
+      ),
+    ));
+    ```
+  - 导出产物：`<prefix>_pcm.wav`、`<prefix>_spectrum.csv`、`<prefix>_spectrum.jsonl`。
 
 ## 完成标准（DoD）
 - ✖️ [6] 导出文件经 PC 工具验证与实时数据一致。
