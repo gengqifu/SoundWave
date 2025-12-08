@@ -9,7 +9,7 @@
 - ✖️ [2] 集成验证：Flutter Demo 依赖新原生包（本地/私有仓库）可构建运行。
 
 ## 开发任务
-- ✖️ [3] Android：新建/整理纯原生 module（无 Flutter 依赖），配置 maven-publish；迁移 ExoPlayer/KissFFT/PCM 管线代码。
+- ✅ [3] Android：新建/整理纯原生 module（无 Flutter 依赖），配置 maven-publish；迁移 ExoPlayer/KissFFT/PCM 管线代码。（已创建 `native/android-visualization` 骨架，maven-publish 配置 `com.soundwave:visualization-core:0.0.2-native-SNAPSHOT`，后续接入 native/core & JNI）
 - ✖️ [4] iOS：产出 XCFramework + Podspec/SPM 清单（无 Flutter 依赖），迁移 vDSP/KissFFT/导出逻辑。
 - ✖️ [5] Flutter 层适配：插件改为引用原生包（path/maven/Pods），示例调整依赖方式；发布脚本更新。
 - ✖️ [6] CI/脚本：发布/校验流程覆盖新原生包，确保无 Flutter 依赖。
