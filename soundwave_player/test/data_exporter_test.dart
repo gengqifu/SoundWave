@@ -72,8 +72,8 @@ void main() {
       ));
       await exporter.init();
       await exporter.addPcmFrame(
-          PcmFrame(sequence: 10, timestampMs: 123, samples: [0.1, -0.1]));
-      await exporter.addSpectrumFrame(SpectrumFrame(
+          const PcmFrame(sequence: 10, timestampMs: 123, samples: [0.1, -0.1]));
+      await exporter.addSpectrumFrame(const SpectrumFrame(
           sequence: 11, timestampMs: 200, bins: [0.5, 0.6], binHz: 50));
       await exporter.close();
 
@@ -94,11 +94,11 @@ void main() {
       ));
       await exporter.init();
       exporter.addPcmFrame(
-          PcmFrame(sequence: 0, timestampMs: 0, samples: [0, 1]));
+          const PcmFrame(sequence: 0, timestampMs: 0, samples: [0, 1]));
       exporter.addPcmFrame(
-          PcmFrame(sequence: 1, timestampMs: 1, samples: [2, 3]));
+          const PcmFrame(sequence: 1, timestampMs: 1, samples: [2, 3]));
       exporter.addPcmFrame(
-          PcmFrame(sequence: 2, timestampMs: 2, samples: [4, 5]));
+          const PcmFrame(sequence: 2, timestampMs: 2, samples: [4, 5]));
       await exporter.close();
 
       expect(exporter.droppedPcmFrames, 1);
@@ -117,12 +117,12 @@ void main() {
         maxPendingSpectrumFrames: 2,
       ));
       await exporter.init();
-      exporter.addSpectrumFrame(
-          SpectrumFrame(sequence: 1, timestampMs: 10, bins: [0.1], binHz: 10));
-      exporter.addSpectrumFrame(
-          SpectrumFrame(sequence: 2, timestampMs: 20, bins: [0.2], binHz: 10));
-      exporter.addSpectrumFrame(
-          SpectrumFrame(sequence: 3, timestampMs: 30, bins: [0.3], binHz: 10));
+      exporter.addSpectrumFrame(const SpectrumFrame(
+          sequence: 1, timestampMs: 10, bins: [0.1], binHz: 10));
+      exporter.addSpectrumFrame(const SpectrumFrame(
+          sequence: 2, timestampMs: 20, bins: [0.2], binHz: 10));
+      exporter.addSpectrumFrame(const SpectrumFrame(
+          sequence: 3, timestampMs: 30, bins: [0.3], binHz: 10));
       await exporter.close();
 
       expect(exporter.droppedSpectrumFrames, 1);

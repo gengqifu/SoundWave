@@ -5,7 +5,7 @@
 
 ## 测试优先（TDD）
 - ✅ [1] 可视化开启/关闭行为：隐藏开关触发后 UI 可正常订阅/取消订阅 PCM/谱事件，不影响播放。（AppBar 长按开启/关闭后门，内部调用 `setVisualizationEnabled` 静音/恢复缓冲）
-- ✖️ [2] 门禁：相关 Widget/集成测试通过，`flutter analyze`、`flutter test` 通过。
+- ✅ [2] 门禁：相关 Widget/集成测试通过，`flutter analyze`、`flutter test` 通过（包含开关行为单测）。
 
 ## 开发任务
 - ✖️ [3] 定义后门开关接口与安全策略（仅测试环境可用），实现 UI 挂载/卸载。

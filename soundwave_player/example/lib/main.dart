@@ -171,6 +171,43 @@ class _MyAppState extends State<MyApp> {
 
   @override
   Widget build(BuildContext context) {
+    final Widget visualizationSection;
+    if (_initialized && _backdoorEnabled) {
+      visualizationSection = Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text('Waveform'),
+          SizedBox(
+            height: 120,
+            child: WaveformStreamView(
+              buffer: _controller.pcmBuffer,
+              background: Colors.black,
+              color: Colors.lightBlueAccent,
+            ),
+          ),
+          const SizedBox(height: 8),
+          const Text('Spectrum'),
+          SizedBox(
+            height: 140,
+            child: SpectrumStreamView(
+              buffer: _controller.spectrumBuffer,
+              // 与测试用例一致：线性频率轴 + 幅度对数压缩，便于对齐 golden。
+              style: const SpectrumStyle(
+                freqLogScale: false,
+                logScale: true,
+                background: Colors.black,
+                barColor: Colors.cyan,
+              ),
+            ),
+          ),
+        ],
+      );
+    } else if (_initialized) {
+      visualizationSection = const Text('长按标题开启可视化后门（波形/频谱）');
+    } else {
+      visualizationSection = const Text('Init 后显示波形/频谱');
+    }
+
     return MaterialApp(
       home: Scaffold(
         appBar: AppBar(
@@ -231,40 +268,7 @@ class _MyAppState extends State<MyApp> {
               Text('Duration: ${_state.duration.inMilliseconds} ms'),
               if (_state.error != null) Text('Error: ${_state.error}', style: const TextStyle(color: Colors.red)),
               const SizedBox(height: 12),
-              if (_initialized && _backdoorEnabled)
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const Text('Waveform'),
-                    SizedBox(
-                      height: 120,
-                      child: WaveformStreamView(
-                        buffer: _controller.pcmBuffer,
-                        background: Colors.black,
-                        color: Colors.lightBlueAccent,
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    const Text('Spectrum'),
-                    SizedBox(
-                      height: 140,
-                      child: SpectrumStreamView(
-                        buffer: _controller.spectrumBuffer,
-                        // 与测试用例一致：线性频率轴 + 幅度对数压缩，便于对齐 golden。
-                        style: const SpectrumStyle(
-                          freqLogScale: false,
-                          logScale: true,
-                          background: Colors.black,
-                          barColor: Colors.cyan,
-                        ),
-                      ),
-                    ),
-                  ],
-                )
-              else if (_initialized)
-                const Text('长按标题开启可视化后门（波形/频谱）'),
-              else
-                const Text('Init 后显示波形/频谱'),
+              visualizationSection,
             ],
           ),
         ),
