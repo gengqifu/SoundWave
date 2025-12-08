@@ -4,7 +4,7 @@
 - 发布 Android AAR（`com.soundwave:visualization-core`）、iOS Pod/SPM（`SoundwaveVisualization`）、Dart 包（`soundwave_visualization`），版本 semver 对齐，可二进制/源码依赖。
 
 ## 测试优先（TDD）
-- ✖️ [1] 发布验收：本地/CI 打包 AAR/XCFramework/pub 包并验证示例可用。
+- ✅ [1] 发布验收：本地/CI 打包 AAR/XCFramework/pub 包并验证示例可用。（新增 `tools/release/build_release.sh` 一键构建 AAR/XCFramework 与 pub dry-run，产物输出至 `build/release/`）
 - ✖️ [2] 门禁：构建/格式/单测通过，CI 发布流程（dry-run）通过。
 
 ## 开发任务
