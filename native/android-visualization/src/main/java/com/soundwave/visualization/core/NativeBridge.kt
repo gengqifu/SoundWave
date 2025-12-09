@@ -9,4 +9,15 @@ object NativeBridge {
     }
 
     external fun nativeVersion(): String
+
+    external fun nativeStartStub(
+        callback: NativeCallback,
+        sampleRate: Int = 44100,
+        channels: Int = 2,
+        framesPerBuffer: Int = 256,
+        pcmMaxFps: Int = 60,
+        spectrumMaxFps: Int = 30,
+    )
+
+    external fun nativeStopStub()
 }

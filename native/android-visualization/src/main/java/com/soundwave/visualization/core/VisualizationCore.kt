@@ -11,4 +11,20 @@ object VisualizationCore {
      */
     @JvmStatic
     fun nativeVersion(): String = NativeBridge.nativeVersion()
+
+    /**
+     * 启动合成信号闭环（仅验证）：生成正弦 -> 节流 -> PCM/谱回调。
+     */
+    @JvmStatic
+    fun startStub(callback: NativeCallback,
+                  sampleRate: Int = 44100,
+                  channels: Int = 2,
+                  framesPerBuffer: Int = 256,
+                  pcmMaxFps: Int = 60,
+                  spectrumMaxFps: Int = 30) {
+        NativeBridge.nativeStartStub(callback, sampleRate, channels, framesPerBuffer, pcmMaxFps, spectrumMaxFps)
+    }
+
+    @JvmStatic
+    fun stopStub() = NativeBridge.nativeStopStub()
 }

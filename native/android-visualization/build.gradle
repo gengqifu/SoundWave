@@ -40,6 +40,10 @@ android {
             path "src/main/cpp/CMakeLists.txt"
         }
     }
+
+    buildFeatures {
+        buildConfig = false
+    }
 }
 
 // 使用 AndroidX
