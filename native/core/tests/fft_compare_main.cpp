@@ -133,14 +133,19 @@ int main(int argc, char** argv) {
     return 1;
   }
   const std::string json_text = ReadFile(argv[1]);
+  if (json_text.empty()) {
+    std::cerr << "Failed to read file: " << argv[1] << std::endl;
+    return 1;
+  }
   const std::string signal = ExtractString(json_text, "signal");
   const int nfft = static_cast<int>(ExtractNumber(json_text, "nfft"));
   const float fs = static_cast<float>(ExtractNumber(json_text, "fs"));
   const auto ref_spectrum = ExtractSpectrum(json_text);
-  if (signal.empty() || nfft <= 0 || fs <= 0.0f || ref_spectrum.empty()) {
-    std::cerr << "Invalid reference JSON: missing fields" << std::endl;
-    return 1;
-  }
+  if (signal.empty()) std::cerr << "Missing field: signal" << std::endl;
+  if (nfft <= 0) std::cerr << "Missing/invalid field: nfft" << std::endl;
+  if (fs <= 0.0f) std::cerr << "Missing/invalid field: fs" << std::endl;
+  if (ref_spectrum.empty()) std::cerr << "Missing field: spectrum" << std::endl;
+  if (signal.empty() || nfft <= 0 || fs <= 0.0f || ref_spectrum.empty()) return 1;
 
   // 生成信号并计算谱（与参考同参数）
   auto samples = GenerateSignal(signal, nfft, fs);
