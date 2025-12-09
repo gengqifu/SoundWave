@@ -159,6 +159,26 @@ class SoundwavePlayerPlugin : FlutterPlugin, MethodCallHandler {
         stopPcmLoop()
         result.success(null)
       }
+      "pushPcmFrame" -> {
+        // TODO: wire to native PCM ingress; currently a no-op placeholder.
+        result.success(null)
+      }
+      "subscribeWaveform" -> {
+        // TODO: wire to native PCM stream subscription; currently handled by existing sinks.
+        result.success(null)
+      }
+      "subscribeSpectrum" -> {
+        // TODO: wire to native spectrum stream subscription; currently handled by existing sinks.
+        result.success(null)
+      }
+      "unsubscribeWaveform" -> {
+        // TODO: manage listener count if needed; placeholder.
+        result.success(null)
+      }
+      "unsubscribeSpectrum" -> {
+        // TODO: manage listener count if needed; placeholder.
+        result.success(null)
+      }
       else -> result.notImplemented()
     }
   }

@@ -71,6 +71,19 @@ public class SoundwavePlayerPlugin: NSObject, FlutterPlugin, FlutterStreamHandle
       let pos = (call.arguments as? [String: Any])?["positionMs"] as? Int ?? 0
       player?.seek(to: CMTime.makeMilliseconds(pos))
       result(nil)
+    case "pushPcmFrame":
+      // TODO: 连接原生 PCM ingress，目前占位 no-op。
+      result(nil)
+    case "subscribeWaveform":
+      // TODO: 管理订阅计数，目前依赖 EventChannel.
+      result(nil)
+    case "subscribeSpectrum":
+      // TODO: 管理订阅计数，目前依赖 EventChannel.
+      result(nil)
+    case "unsubscribeWaveform":
+      result(nil)
+    case "unsubscribeSpectrum":
+      result(nil)
     default:
       result(FlutterMethodNotImplemented)
     }
