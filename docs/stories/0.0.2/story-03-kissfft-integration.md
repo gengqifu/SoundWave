@@ -9,7 +9,7 @@
 - ✔️ [3] 性能烟测：连续推流 1 分钟无内存泄漏/明显 CPU 峰值。
 
 ## 开发任务
-- ✖️ [4] 集成 KissFFT 构建（CMake/Android/iOS），移除 Kotlin FFT 与 vDSP 调用路径。
+- ✔️ [4] 集成 KissFFT 构建（CMake/Android/iOS），移除 Kotlin FFT 与 vDSP 调用路径。
 - ✖️ [5] 实现窗口化/归一化与 downmix，接入 PCM ingress 输出 Spectrum 事件。
 - ✖️ [6] 添加跨端对齐测试与性能烟测脚本，更新文档参数说明。
 
