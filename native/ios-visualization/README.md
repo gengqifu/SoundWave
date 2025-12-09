@@ -5,7 +5,7 @@
 当前状态（骨架）：
 - 目录：`native/ios-visualization/`
 - 提供 Podspec (`SoundwaveVisualization.podspec`) 与 SwiftPM 清单 (`Package.swift`)，引用同目录下的 `SoundwaveVisualization.xcframework`（待产出）。
-- 新增基于 vDSP 的合成闭环脚本 `scripts/build_vdsp_xcframework.sh`（arm64 设备/模拟器），生成包含 PCM/谱回调的 XCFramework，用于原生闭环验证（默认正弦+Hann+FFT）。旧的占位脚本 `build_stub_xcframework.sh` 仍保留。
+- 新增基于 vDSP 的合成闭环脚本 `scripts/build_vdsp_xcframework.sh`（arm64 设备/模拟器），生成包含 PCM/谱回调的 XCFramework，用于原生闭环验证（默认正弦+Hann+FFT）。产物默认输出到 `native/ios-visualization/build/SoundwaveVisualization.xcframework`，不会污染源码目录；旧的占位脚本 `build_stub_xcframework.sh` 仍保留。
 
 后续工作：
 - 将 `native/core` C++ 接入并编译为 XCFramework（含 arm64/x86_64 模拟器），提供 ObjC/Swift API。
