@@ -14,6 +14,7 @@ add_library(soundwave_core STATIC
   src/playback_thread.cpp
   src/pcm_throttler.cpp
   src/fft_spectrum.cpp
+  src/visualization_core_stub.cpp
   third_party/kissfft/kiss_fft.c
   third_party/kissfft/kiss_fftr.c
 )
