@@ -55,29 +55,12 @@ const SpectrumStyle(
 - 低频占比过大时，可将 `freqLogScale` 设为 `false` 变为线性频率轴，或调小 `logScale` 影响。
 
 ## 手工验证可视化（建议流程）
-1) 准备测试音频（单声道 48 kHz，避免压缩失真，可用 ffmpeg 生成）：正弦 1 kHz、方波/锯齿、白噪声/粉噪、20–20k 线性扫频、静音。  
+1) 使用内置 assets（`example/assets/audio`）或自备单声道 48 kHz 测试音频：正弦 1 kHz、方波/锯齿、白噪声/粉噪、20–20k 线性扫频、静音。  
 2) 在示例页输入本地路径或使用“Use bundled …”/手动选择文件 → `Init` → `Load` → `Play`。  
 3) 观察 Waveform：正弦平滑、方波平顶、噪声随机无溢出、扫频振幅/频率随时间变。  
 4) 观察 Spectrum：正弦单峰；方波/锯齿多谐波递减；白噪声谱趋近平坦、粉噪高频衰减；扫频主峰随时间从低频平滑移动到高频；静音无显著能量。  
 5) 如谱偏左/右，可切换 `SpectrumStyle(freqLogScale: false)` 看线性频率轴；多声道源若下混，谱为平均。  
-6) 更严格可录屏/截屏，与离线工具（Python/ffmpeg 绘制的谱）对比峰值位置和形状，容忍窗函数带来的主瓣宽度与旁瓣。
-
-### ffmpeg 生成测试音频示例（单声道 48 kHz）
-```bash
-# 正弦 1 kHz，1s
-ffmpeg -f lavfi -i "sine=frequency=1000:sample_rate=48000:duration=1" sine_1k.wav
-# 方波 1 kHz（使用 sgn），1s
-ffmpeg -f lavfi -i "aevalsrc=exprs=sgn(sin(2*PI*1000*t)):s=48000:d=1" square_1k.wav
-# 锯齿波 1 kHz，1s
-ffmpeg -f lavfi -i "aevalsrc=exprs=2*(t*1000-floor(t*1000))-1:s=48000:d=1" saw_1k.wav
-# 白噪声/粉噪，1s
-ffmpeg -f lavfi -i "anoisesrc=color=white:amplitude=0.5:d=1:s=48000" noise_white.wav
-ffmpeg -f lavfi -i "anoisesrc=color=pink:amplitude=0.5:d=1:s=48000" noise_pink.wav
-# 线性扫频 20Hz->20kHz，5s（手写公式，兼容旧 ffmpeg）
-ffmpeg -f lavfi -i "aevalsrc=exprs=sin(2*PI*(20*t + 0.5*((20000-20)/5)*t*t)):s=48000:d=5" sweep_20_20k.wav
-# 静音，1s
-ffmpeg -f lavfi -i "anullsrc=cl=mono:r=48000:d=1" silence.wav
-```
+6) 更严格可录屏/截屏，与离线工具（如 Python/scipy 绘制的谱）对比峰值位置和形状，容忍窗函数带来的主瓣宽度与旁瓣。
 
 ## 开发
 

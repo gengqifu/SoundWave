@@ -1,5 +1,5 @@
 # SoundWave
-移动端音频播放 + 实时可视化（波形 / 频谱）的 Flutter 插件与示例。
+移动端音频播放 + 实时可视化（波形 / 频谱）的 Flutter 插件与示例（上层解码，SDK 处理 PCM → 波形/频谱）。
 
 ## 功能
 - 播放本地/流式音频（ExoPlayer/AVPlayer），支持播放控制与前后台切换。
@@ -37,16 +37,15 @@ const SpectrumStyle(
 - Flutter UI：`WaveformView`/`SpectrumView` 自定义绘制与交互，`AudioController` 管状态与命令。
 - Flutter 插件：`MethodChannel`/`EventChannel` 校验参数、映射错误码，串接平台桥接。
 - 平台桥接：最小化适配（权限/AudioSession/AudioFocus），调用共用的 C/C++ 核心。
-- C/C++ 核心：FFmpeg 解码 + 重采样 → 环形缓冲 → 回放线程；旁路分支做 FFT/DSP 并节流推送。
-- 数据流：解码线程写缓冲，回放线程读缓冲并驱动时钟；FFT 线程复用 PCM 分帧；Dart 按节流帧率接收并绘制。
+- C/C++ 核心：PCM ingress 校验/节流 → Downmix → KissFFT → 波形/频谱事件；解码由上层播放器负责。
+- 数据流：上层解码推送 PCM → 核心缓冲/节流 → 波形/频谱事件 → Flutter 绘制。
 
 ## 集成与构建
 1) 环境：Flutter 3.x（稳定版）、Xcode 15+（iOS），Android SDK 34+、NDK r26、CMake（随 Android SDK 安装）。  
 2) 依赖获取：在你的工程中添加 `soundwave_player`（本仓库可通过 path 依赖：`soundwave_player/`）。  
 3) iOS：`pod install` 由 Flutter 生成；确保已接受 Xcode 许可并配置开发者证书。  
 4) Android：使用 Android Studio / `flutter build apk`，确保 NDK/CMake 路径在 ANDROID_SDK 内。  
-5) FFmpeg：仓库已提供预编译包（`ffmpeg/`），CMake 会自动引用；如需自定义编解码，可替换对应静态库。  
-6) 示例运行：`cd soundwave_player/example && flutter run`（真机或模拟器）。
+5) 示例运行：`cd soundwave_player/example && flutter run`（真机或模拟器）。
 
 ## 插件 API 快览
 - `init(SoundwaveConfig config)`：采样率、缓冲大小、通道数、可视化节流配置。
@@ -67,9 +66,9 @@ await controller.play();
 
 ## 目录结构
 - `soundwave_player/`：Flutter 插件与示例。
-- `native/`：C/C++ 音频核心（FFmpeg/FFT 等）。
-- `docs/stories/<version>/`：迭代故事与任务记录（现有 0.0.1：`docs/stories/0.0.1/`）。
-- `DESIGN.md`：概要设计（架构/时序/交互图）。
+- `native/`：C/C++ 核心（PCM ingress/节流/KissFFT 等）。
+- `docs/stories/<version>/`：迭代故事与任务记录（现有 0.0.1、0.0.2）。
+- `docs/design/<version>/`：概要设计（架构/时序/交互图）。
 
 ## 可视化配置要点
 - 波形：`WaveformStreamView` 支持背景/颜色/线宽；大文件场景建议适度调高抽稀与节流 FPS（降低跨平台开销）。
