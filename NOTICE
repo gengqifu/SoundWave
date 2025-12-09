@@ -1,0 +1,8 @@
+SoundWave
+Copyright 2024 SoundWave Contributors
+
+This product includes software developed at:
+- Google LLC (ExoPlayer, Apache License 2.0)
+- Flutter project (BSD-style)
+- KissFFT (Mark Borgerding, BSD-style)
+- Apple Inc. (AVFoundation/AVAudioEngine headers used via platform SDK, subject to Apple terms)

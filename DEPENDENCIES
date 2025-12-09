@@ -1,0 +1,4 @@
+- ExoPlayer (Apache License 2.0) - Android media playback
+- Flutter SDK (BSD-style) - Flutter framework and tooling
+- KissFFT (BSD-style) - FFT implementation
+- AVFoundation / AVAudioEngine (Apple platform SDK terms) - iOS media playback
