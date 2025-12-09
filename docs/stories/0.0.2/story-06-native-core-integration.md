@@ -6,7 +6,7 @@
 
 ## 测试优先（TDD）
 - 前置基线：使用 `tools/fft_reference.py` 生成的 `docs/fft_reference_{single,double,white,sweep}.json` 作为黄金谱；统一参数 Hann、nfft=1024、归一化 2/(N*E_window)、fs=44.1k。
-- ◻️ [1] 频谱一致性：单/双频、白噪、扫频对照黄金谱，Android（KissFFT）与 iOS（vDSP）误差 < 1e-3（L2/Max）。
+- ✅ [1] 频谱一致性：单/双频、白噪、扫频对照黄金谱，Android（KissFFT）与 iOS（vDSP）误差 < 1e-3（L2/Max）。对照结果详见 `docs/fft_cross_platform_report.md`。
 - ◻️ [2] 回调/导出通路：PCM 节流、频谱回调、数据导出在原生层闭环验证（含线程安全），有 gtest/仪表或真机用例。
 
 ## 开发任务
