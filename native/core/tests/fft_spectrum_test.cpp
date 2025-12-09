@@ -49,6 +49,31 @@ TEST(FftSpectrumTest, WindowAndOverlapConfigAffectsOutputSize) {
   EXPECT_EQ(static_cast<int>(spectrum.size()), cfg.window_size / 2 + 1);
 }
 
+TEST(FftSpectrumTest, DifferentWindowSizesProduceExpectedBins) {
+  const int sample_rate = 48000;
+  SpectrumConfig cfg;
+  cfg.window = WindowType::kHamming;
+
+  cfg.window_size = 256;
+  std::vector<float> samples_small(cfg.window_size);
+  auto spec_small = ComputeSpectrum(samples_small, sample_rate, cfg);
+  ASSERT_EQ(static_cast<int>(spec_small.size()), cfg.window_size / 2 + 1);
+  const float bin_hz_small = static_cast<float>(sample_rate) / cfg.window_size;
+  EXPECT_NEAR(bin_hz_small, 187.5f, 1e-3f);
+
+  cfg.window_size = 1024;
+  std::vector<float> samples_large(cfg.window_size);
+  auto spec_large = ComputeSpectrum(samples_large, sample_rate, cfg);
+  ASSERT_EQ(static_cast<int>(spec_large.size()), cfg.window_size / 2 + 1);
+  const float bin_hz_large = static_cast<float>(sample_rate) / cfg.window_size;
+  EXPECT_NEAR(bin_hz_large, 46.875f, 1e-3f);
+
+  // Invalid window larger than input should return empty.
+  cfg.window_size = 2048;
+  auto spec_empty = ComputeSpectrum(samples_small, sample_rate, cfg);
+  EXPECT_TRUE(spec_empty.empty());
+}
+
 TEST(FftSpectrumTest, TwoToneHasTwoDominantPeaks) {
   const int sample_rate = 48000;
   const int window = 2048;
