@@ -9,7 +9,7 @@
 
 ## 开发任务
 - ✔️ [3] 删除 FFmpeg 相关源码、预编译库、脚本，清理 CMake/Gradle/Podspec 引用。
-- ✖️ [4] 更新文档（README/CHANGELOG/PRD/设计/计划中涉及的解码描述）确认平台解码为唯一方案。
+- ✔️ [4] 更新文档（README/CHANGELOG/PRD/设计/计划中涉及的解码描述）确认平台解码为唯一方案。
 - ✖️ [5] 替换主 LICENSE 为 Apache 2.0，新增 NOTICE/DEPENDENCIES，记录第三方许可。
 
 ## 完成标准（DoD）
