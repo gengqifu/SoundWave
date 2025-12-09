@@ -8,14 +8,14 @@
 ## 2. 总体架构
 ```mermaid
 flowchart LR
-    App[上层应用/Flutter demo\nExoPlayer/AVPlayer 解码] --> PCM[PCM 推送\nfloat32/交错/采样率/通道/ts]
-    PCM --> Ingress[SDK PCM Ingress\n校验/节流/缓冲/downmix]
-    Ingress --> Wave[波形抽样]
-    Ingress --> FFT[FFT (KissFFT)<br/>Hann nfft=1024 hop=512]
-    Wave --> UIWave[波形回调/绘制]
-    FFT --> UISpec[频谱回调/绘制]
-    Ingress --> Err[错误回调\n格式异常/过载/FFT 错误]
-    Wave --> Export[可选导出 WAV/CSV/JSON]
+    App["上层应用/Flutter demo<br/>ExoPlayer/AVPlayer 解码"] --> PCM["PCM 推送<br/>float32/交错/采样率/通道/ts"]
+    PCM --> Ingress["SDK PCM Ingress<br/>校验/节流/缓冲/downmix"]
+    Ingress --> Wave["波形抽样"]
+    Ingress --> FFT["FFT (KissFFT)<br/>Hann nfft=1024 hop=512"]
+    Wave --> UIWave["波形回调/绘制"]
+    FFT --> UISpec["频谱回调/绘制"]
+    Ingress --> Err["错误回调<br/>格式异常/过载/FFT 错误"]
+    Wave --> Export["可选导出 WAV/CSV/JSON"]
     FFT --> Export
 ```
 
