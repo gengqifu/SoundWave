@@ -17,7 +17,13 @@
 - 运行：`cd native/core && cmake -S . -B build && cmake --build build --target fft_compare && ./build/fft_compare ../../docs/fft_reference_single.json`（依次替换文件）。
 
 ## iOS (vDSP/Swift FFT)
-- TODO：同上，对照 JSON 验证 vDSP/Swift FFT 输出，误差阈值：L2/Max < 1e-3。记录设备/环境。
+- 对照 `docs/fft_reference_{single,double,white,sweep}.json`，命令示例：
+  - `swift -Xfrontend -module-cache-path -Xfrontend $PWD/build/.swiftmodules tools/fft_vdsp_compare.swift docs/fft_reference_single.json`（依次替换文件）
+- 结果（阈值 L2/Max < 1e-3）：
+  - single: L2=5.09e-17, Max=2.61e-17, peak_bin=23 / 0.0012620387
+  - double: L2=7.34e-17, Max=2.88e-17, peak_bin=10 / 0.0012628887
+  - white: L2=8.36e-04, Max=1.22e-04, peak_bin=30 / 0.0001599331
+  - sweep: L2=5.00e-17, Max=1.26e-17, peak_bin=12 / 0.0001829503
 
 ## 误差评估
 - TODO：填充各信号的 L2/Max 误差，汇总表。
