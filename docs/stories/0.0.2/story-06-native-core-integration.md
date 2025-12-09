@@ -1,4 +1,4 @@
-# Story 07：原生核心接入与功能完备
+# Story 06：原生核心接入与功能完备
 
 ## 目标
 - 将 Story02/03/04 涉及的核心能力（FFT/PCM 节流/导出/可视化回调）完整封装进原生可发布包：Android AAR、iOS XCFramework，彻底去除 Flutter 依赖。

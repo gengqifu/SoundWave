@@ -1,4 +1,4 @@
-# Story 08：原生可发布包拆分（无 Flutter 依赖）
+# Story 07：原生可发布包拆分（无 Flutter 依赖）
 
 ## 目标
 - 拆出纯原生可发布库：Android AAR（`com.soundwave:visualization-core` 等）、iOS XCFramework（Pod/SPM `SoundwaveVisualization`），**不依赖 Flutter**。Flutter 仅用于 Demo/插件层调用原生包。
