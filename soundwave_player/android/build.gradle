@@ -53,6 +53,7 @@ android {
         implementation("androidx.media3:media3-exoplayer:1.2.1")
         implementation("androidx.media3:media3-exoplayer-hls:1.2.1")
         implementation("androidx.media3:media3-session:1.2.1")
+        implementation(project(":core"))
         testImplementation("org.jetbrains.kotlin:kotlin-test")
         testImplementation("org.mockito:mockito-core:5.0.0")
     }
