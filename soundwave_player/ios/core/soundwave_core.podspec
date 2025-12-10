@@ -6,7 +6,7 @@ Pod::Spec.new do |s|
 Core SDK for SoundWave native processing. This is a placeholder pending full PCM/FFT migration.
   DESC
   s.homepage         = 'http://example.com'
-  s.license          = { :file => '../../LICENSE' }
+  s.license          = { :file => '../../../LICENSE' }
   s.author           = { 'SoundWave' => 'dev@soundwave' }
   s.source           = { :path => '.' }
   s.source_files     = ['Sources/SoundwaveCore/**/*.{swift,h,c}']
