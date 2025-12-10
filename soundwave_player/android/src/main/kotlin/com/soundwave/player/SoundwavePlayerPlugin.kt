@@ -160,8 +160,7 @@ class SoundwavePlayerPlugin : FlutterPlugin, MethodCallHandler {
         result.success(null)
       }
       "pushPcmFrame" -> {
-        // TODO: wire to native PCM ingress; currently a no-op placeholder.
-        result.success(null)
+        handlePushPcm(call, result)
       }
       "subscribeWaveform" -> {
         // TODO: wire to native PCM stream subscription; currently handled by existing sinks.
@@ -477,6 +476,40 @@ class SoundwavePlayerPlugin : FlutterPlugin, MethodCallHandler {
     pcmSink?.success(mapOf("dropped" to true, "droppedBefore" to dropped))
     spectrumSink?.success(mapOf("dropped" to true, "droppedBefore" to dropped))
     log("notifyDropped $dropped")
+  }
+
+  private fun handlePushPcm(call: MethodCall, result: Result) {
+    val samples = call.argument<List<Double>>("samples")
+    val sampleRate = call.argument<Int>("sampleRate") ?: -1
+    val channels = call.argument<Int>("channels") ?: -1
+    val timestampMs = call.argument<Int>("timestampMs") ?: 0
+    val sequence = call.argument<Int>("sequence") ?: 0
+    val frameSize = call.argument<Int>("frameSize")
+
+    if (samples == null || samples.isEmpty()) {
+      result.error("invalid_format", "samples is required", null)
+      return
+    }
+    if (sampleRate <= 0 || channels <= 0) {
+      result.error("invalid_format", "invalid sampleRate/channels", null)
+      return
+    }
+    if (samples.size % channels != 0) {
+      result.error("invalid_format", "samples must be divisible by channels", null)
+      return
+    }
+
+    val frames = frameSize ?: (samples.size / channels)
+    pcmSink?.success(
+      mapOf(
+        "sequence" to sequence,
+        "timestampMs" to timestampMs,
+        "samples" to samples,
+        "frameSize" to frames,
+        "droppedBefore" to 0
+      )
+    )
+    result.success(null)
   }
 
   companion object {
