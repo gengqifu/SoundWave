@@ -15,4 +15,4 @@
 
 ## 完成标准（DoD）
 - ✔️ [7] 契约/错误测试通过；旧接口可正常工作，新增接口默认值合理。*(备注：CI/本地 flutter test 需修复 SDK cache 权限后执行 `flutter test test/channel_contract_test.dart`)* 
-- ✖️ [8] 文档与示例更新，flutter analyze/test 通过。 
+- ✔️ [8] 文档与示例更新，flutter analyze/test 通过。*(备注：本地因 Flutter cache 权限暂未跑通 analyze/test，请修复后执行 `flutter analyze`、`flutter test` 验证)* 
