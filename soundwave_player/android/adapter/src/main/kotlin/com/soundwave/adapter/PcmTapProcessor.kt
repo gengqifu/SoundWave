@@ -1,4 +1,4 @@
-package com.soundwave.player
+package com.soundwave.adapter
 
 import android.os.SystemClock
 import androidx.media3.common.C
@@ -29,12 +29,11 @@ class PcmTapProcessor : BaseAudioProcessor() {
       return
     }
 
-    // Copy input to output so playback continues.
     val outBuffer = replaceOutputBuffer(inputBuffer.remaining())
     val bufferForTap = inputBuffer.duplicate().order(ByteOrder.nativeOrder())
     outBuffer.put(inputBuffer)
     outBuffer.flip()
-    
+
     val remaining = bufferForTap.remaining()
     val data = ByteArray(remaining)
     bufferForTap.get(data)
@@ -61,8 +60,6 @@ class PcmTapProcessor : BaseAudioProcessor() {
       else -> FloatArray(0)
     }
 
-    // Downmix multi-channel PCM to mono to avoid interleaved L/R introducing artificial high-frequency
-    // energy in FFT and to keep waveform consistent across channels.
     val mono = if (channelCount <= 1 || samples.isEmpty()) {
       samples
     } else {
@@ -80,17 +77,14 @@ class PcmTapProcessor : BaseAudioProcessor() {
     }
 
     if (queue.size >= maxQueueFrames) {
-      // Drop the oldest frame when over capacity.
       queue.poll()
       droppedCounter.incrementAndGet()
     }
     queue.add(PcmFrame(sequence++, SystemClock.elapsedRealtime(), mono))
   }
 
-  override fun onQueueEndOfStream() {
-    // No-op for tap
-  }
-  
+  override fun onQueueEndOfStream() { }
+
   public override fun onReset() {
     queue.clear()
     sequence = 0

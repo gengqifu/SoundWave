@@ -1,3 +1,5 @@
 rootProject.name = 'soundwave_player'
 include ':core'
 project(':core').projectDir = new File(rootDir, 'core')
+include ':adapter'
+project(':adapter').projectDir = new File(rootDir, 'adapter')

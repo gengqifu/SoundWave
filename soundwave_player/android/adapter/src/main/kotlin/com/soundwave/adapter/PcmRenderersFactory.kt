@@ -1,4 +1,4 @@
-package com.soundwave.player
+package com.soundwave.adapter
 
 import android.content.Context
 import androidx.media3.common.util.UnstableApi
