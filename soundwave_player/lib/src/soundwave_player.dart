@@ -178,6 +178,12 @@ class SoundwavePlayer {
         return '缓冲过载：输入过快或设备忙';
       case 'fft_error':
         return '频谱计算错误';
+      case 'network_error':
+        return '网络错误：连接失败或超时';
+      case 'playback_error':
+        return '播放错误';
+      case 'timeout':
+        return '操作超时';
       default:
         return message ?? 'Unknown error';
     }

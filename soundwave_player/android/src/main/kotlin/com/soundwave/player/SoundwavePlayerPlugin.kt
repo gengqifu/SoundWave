@@ -256,14 +256,15 @@ class SoundwavePlayerPlugin : FlutterPlugin, MethodCallHandler {
         }
 
         override fun onPlayerError(error: PlaybackException) {
+          val mapped = mapError(error)
           emitState(
             mapOf(
               "type" to "error",
-              "message" to (error.message ?: "playback error"),
-              "code" to error.errorCodeName
+              "message" to mapped.second,
+              "code" to mapped.first
             )
           )
-          Log.e(TAG, "playerError code=${error.errorCodeName}", error)
+          Log.e(TAG, "playerError code=${error.errorCodeName} mapped=${mapped.first}", error)
         }
 
         override fun onIsPlayingChanged(isPlaying: Boolean) {
@@ -476,6 +477,26 @@ class SoundwavePlayerPlugin : FlutterPlugin, MethodCallHandler {
     pcmSink?.success(mapOf("dropped" to true, "droppedBefore" to dropped))
     spectrumSink?.success(mapOf("dropped" to true, "droppedBefore" to dropped))
     log("notifyDropped $dropped")
+  }
+
+  private fun mapError(error: PlaybackException): Pair<String, String> {
+    val code = when (error.errorCode) {
+      PlaybackException.ERROR_CODE_IO_NETWORK_CONNECTION_FAILED,
+      PlaybackException.ERROR_CODE_IO_NETWORK_CONNECTION_TIMEOUT,
+      PlaybackException.ERROR_CODE_IO_NETWORK_OTHER -> "network_error"
+      PlaybackException.ERROR_CODE_PARSING_CONTAINER_MALFORMED,
+      PlaybackException.ERROR_CODE_PARSING_MANIFEST_MALFORMED,
+      PlaybackException.ERROR_CODE_DECODER_INIT_FAILED -> "invalid_format"
+      PlaybackException.ERROR_CODE_TIMEOUT -> "timeout"
+      else -> "playback_error"
+    }
+    val message = error.message ?: when (code) {
+      "network_error" -> "网络错误：连接/请求失败"
+      "invalid_format" -> "格式错误：不支持的源或解码失败"
+      "timeout" -> "播放超时"
+      else -> "播放错误"
+    }
+    return Pair(code, message)
   }
 
   private fun handlePushPcm(call: MethodCall, result: Result) {
