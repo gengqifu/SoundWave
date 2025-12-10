@@ -1,9 +1,14 @@
 #include "fft_bridge.h"
 
+#include <math.h>
 #include <stdlib.h>
 
 #include "kiss_fftr.h"
 #include "_kiss_fft_guts.h"
+
+#ifndef KISS_FFT_PI
+#define KISS_FFT_PI 3.14159265358979323846f
+#endif
 
 // 简单 Hann/Hamming 窗口。
 static float window_value(int n, int N, int window_type) {
