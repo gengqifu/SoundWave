@@ -9,7 +9,7 @@
 - ✖️ [3] 发布脚本检查：Maven/本地私有仓库推送、XCFramework 打包脚本可执行。
 
 ## 开发任务
-- ✖️ [4] 拆分独立原生 SDK 模块（Android/iOS）：核心实现独立于 Flutter 插件，插件仅作为壳层依赖 SDK，并迁移现有核心代码。
+- ✖️ [4] 拆分独立原生 SDK 模块（Android/iOS）：核心实现独立于 Flutter 插件，插件仅作为壳层依赖 SDK，并迁移现有核心代码；拆分和迁移后不影响功能，现有测试全部通过。
 - ✖️ [5] Android 构建：Gradle/CMake 配置输出 AAR，处理 ABI/符号、版本号、POM 元数据。
 - ✖️ [6] iOS 构建：Xcode/CMake 生成 XCFramework（静态/动态选择），准备 SPM/Pod 集成说明。
 - ✖️ [7] 发布与文档：编写发布脚本与 README/接入说明，包含版本/依赖/示例。
