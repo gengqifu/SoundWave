@@ -6,6 +6,7 @@ final class SpectrumHost {
   private let engine = AVAudioEngine()
   private let player = AVAudioPlayerNode()
   private let spectrum = SpectrumEngine(windowSize: 1024, windowType: .hann, powerSpectrum: true)
+  var fileName: String = "sample.wav" // 可切换为 bundle 中的任意测试音频
 
   init() {
     engine.attach(player)
@@ -14,8 +15,12 @@ final class SpectrumHost {
   }
 
   func start() throws {
-    guard let url = Bundle.main.url(forResource: "sample", withExtension: "wav") else {
-      throw NSError(domain: "SpectrumHost", code: -1, userInfo: [NSLocalizedDescriptionKey: "missing sample.wav"])
+    let parts = fileName.split(separator: ".")
+    let name = parts.dropLast().joined(separator: ".")
+    let ext = parts.last.map(String.init) ?? ""
+
+    guard let url = Bundle.main.url(forResource: name, withExtension: ext) else {
+      throw NSError(domain: "SpectrumHost", code: -1, userInfo: [NSLocalizedDescriptionKey: "missing \(fileName)"])
     }
     let file = try AVAudioFile(forReading: url)
     let format = file.processingFormat
