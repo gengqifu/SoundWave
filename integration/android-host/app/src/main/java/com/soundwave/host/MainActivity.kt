@@ -5,6 +5,7 @@ import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
 import android.util.Log
+import android.widget.TextView
 import androidx.appcompat.app.AppCompatActivity
 import androidx.media3.common.MediaItem
 import androidx.media3.exoplayer.ExoPlayer
@@ -53,21 +54,19 @@ class MainActivity : AppCompatActivity() {
     player = ExoPlayer.Builder(this, PcmRenderersFactory(this, tap)).build()
 
     findViewById<MaterialButton>(R.id.playButton).setOnClickListener {
-      // 默认示例为一个公开 mp3 链接，若离线请替换为本地文件 Uri。
-      val mediaItem = MediaItem.fromUri(
-        Uri.parse("https://samplelib.com/lib/preview/mp3/sample-3s.mp3")
-      )
-      player.setMediaItem(mediaItem)
+      // 默认播放 assets/sample.wav，离线可用。
+      val assetUri = Uri.parse("asset:///sample.wav")
+      player.setMediaItem(MediaItem.fromUri(assetUri))
       player.prepare()
       player.play()
       handler.post(pollTask)
-      findViewById<android.widget.TextView>(R.id.status).text = "Playing sample…"
+      findViewById<TextView>(R.id.status).text = "Playing local asset…"
     }
 
     findViewById<MaterialButton>(R.id.stopButton).setOnClickListener {
       player.pause()
       handler.removeCallbacks(pollTask)
-      findViewById<android.widget.TextView>(R.id.status).text = "Stopped"
+      findViewById<TextView>(R.id.status).text = "Stopped"
     }
   }
 
