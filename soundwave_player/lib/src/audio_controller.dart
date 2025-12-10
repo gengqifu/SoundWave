@@ -4,6 +4,7 @@ import 'soundwave_config.dart';
 import 'audio_state.dart';
 import 'soundwave_exception.dart';
 import 'soundwave_player.dart';
+import 'pcm_input_frame.dart';
 import 'pcm_buffer.dart';
 import 'spectrum_buffer.dart';
 
@@ -52,7 +53,8 @@ class AudioController {
     await _platform.init(config);
     _stateSubscription = _platform.stateEvents.listen(_handlePlatformEvent);
     _pcmBuffer = PcmBuffer(stream: _platform.pcmEvents, maxFrames: 60);
-    _spectrumBuffer = SpectrumBuffer(stream: _platform.spectrumEvents, maxFrames: 60);
+    _spectrumBuffer =
+        SpectrumBuffer(stream: _platform.spectrumEvents, maxFrames: 60);
     _initialized = true;
     _emit(_state);
   }
@@ -64,10 +66,9 @@ class AudioController {
     _emit(_state.copyWith(isBuffering: true, error: null));
     await _guardPlatformCall(() => _platform.load(source, headers: headers),
         onSuccess: () {
-          _resetBuffers();
-          _emit(_state.copyWith(isBuffering: false));
-        },
-        clearBufferingOnError: true);
+      _resetBuffers();
+      _emit(_state.copyWith(isBuffering: false));
+    }, clearBufferingOnError: true);
   }
 
   Future<void> play() async {
@@ -75,8 +76,8 @@ class AudioController {
     // ignore: avoid_print
     print('AudioController:play');
     await _guardPlatformCall(() => _platform.play(),
-        onSuccess: () =>
-            _emit(_state.copyWith(isPlaying: true, isBuffering: false, error: null)));
+        onSuccess: () => _emit(
+            _state.copyWith(isPlaying: true, isBuffering: false, error: null)));
   }
 
   Future<void> pause() async {
@@ -92,27 +93,25 @@ class AudioController {
     _ensureInitialized();
     // ignore: avoid_print
     print('AudioController:stop');
-    await _guardPlatformCall(() => _platform.stop(),
-        onSuccess: () {
-          _resetBuffers();
-          _emit(_state.copyWith(
-            isPlaying: false,
-            isBuffering: false,
-            position: Duration.zero,
-            bufferedPosition: Duration.zero,
-          ));
-        });
+    await _guardPlatformCall(() => _platform.stop(), onSuccess: () {
+      _resetBuffers();
+      _emit(_state.copyWith(
+        isPlaying: false,
+        isBuffering: false,
+        position: Duration.zero,
+        bufferedPosition: Duration.zero,
+      ));
+    });
   }
 
   Future<void> seek(Duration position) async {
     _ensureInitialized();
     // ignore: avoid_print
     print('AudioController:seek ${position.inMilliseconds}ms');
-    await _guardPlatformCall(() => _platform.seek(position),
-        onSuccess: () {
-          _resetBuffers();
-          _emit(_state.copyWith(position: position, error: null));
-        });
+    await _guardPlatformCall(() => _platform.seek(position), onSuccess: () {
+      _resetBuffers();
+      _emit(_state.copyWith(position: position, error: null));
+    });
   }
 
   void dispose() {
@@ -120,6 +119,31 @@ class AudioController {
     _pcmBuffer?.dispose();
     _spectrumBuffer?.dispose();
     _stateController.close();
+  }
+
+  Future<void> pushPcmFrame(PcmInputFrame frame) async {
+    _ensureInitialized();
+    await _platform.pushPcmFrame(frame);
+  }
+
+  Future<void> subscribeWaveform() async {
+    _ensureInitialized();
+    await _platform.subscribeWaveform();
+  }
+
+  Future<void> subscribeSpectrum() async {
+    _ensureInitialized();
+    await _platform.subscribeSpectrum();
+  }
+
+  Future<void> unsubscribeWaveform() async {
+    if (!_initialized) return;
+    await _platform.unsubscribeWaveform();
+  }
+
+  Future<void> unsubscribeSpectrum() async {
+    if (!_initialized) return;
+    await _platform.unsubscribeSpectrum();
   }
 
   Future<void> _guardPlatformCall(Future<void> Function() call,
@@ -146,8 +170,8 @@ class AudioController {
       _emit(_state.copyWith(
         position: _parseDuration(event['positionMs'], _state.position),
         duration: _parseDuration(event['durationMs'], _state.duration),
-        bufferedPosition:
-            _parseDuration(event['bufferedMs'], _state.bufferedPosition ?? Duration.zero),
+        bufferedPosition: _parseDuration(
+            event['bufferedMs'], _state.bufferedPosition ?? Duration.zero),
         isPlaying: (event['isPlaying'] as bool?) ?? _state.isPlaying,
         isBuffering: (event['isBuffering'] as bool?) ?? _state.isBuffering,
         levels: _parseDoubleList(event['levels']) ?? _state.levels,
@@ -156,8 +180,8 @@ class AudioController {
       ));
     } else if (type == 'buffering') {
       _emit(_state.copyWith(
-        bufferedPosition:
-            _parseDuration(event['bufferedMs'], _state.bufferedPosition ?? Duration.zero),
+        bufferedPosition: _parseDuration(
+            event['bufferedMs'], _state.bufferedPosition ?? Duration.zero),
         isBuffering: (event['isBuffering'] as bool?) ?? true,
         error: null,
       ));
@@ -166,8 +190,8 @@ class AudioController {
       _emit(_state.copyWith(
           error: message,
           isBuffering: (event['isBuffering'] as bool?) ?? true,
-          bufferedPosition:
-              _parseDuration(event['bufferedMs'], _state.bufferedPosition ?? Duration.zero)));
+          bufferedPosition: _parseDuration(
+              event['bufferedMs'], _state.bufferedPosition ?? Duration.zero)));
     } else if (type == 'stalled') {
       _emit(_state.copyWith(
         isBuffering: true,
@@ -187,8 +211,8 @@ class AudioController {
         isPlaying: true,
         isBuffering: false,
         position: _parseDuration(event['positionMs'], _state.position),
-        bufferedPosition:
-            _parseDuration(event['bufferedMs'], _state.bufferedPosition ?? Duration.zero),
+        bufferedPosition: _parseDuration(
+            event['bufferedMs'], _state.bufferedPosition ?? Duration.zero),
         error: null,
       ));
       _pcmBuffer?.resume();
@@ -197,8 +221,8 @@ class AudioController {
       _emit(_state.copyWith(
         isBuffering: false,
         position: _parseDuration(event['positionMs'], _state.position),
-        bufferedPosition:
-            _parseDuration(event['bufferedMs'], _state.bufferedPosition ?? Duration.zero),
+        bufferedPosition: _parseDuration(
+            event['bufferedMs'], _state.bufferedPosition ?? Duration.zero),
         error: null,
       ));
     } else if (type == 'error') {
@@ -216,7 +240,8 @@ class AudioController {
 
   void _emitError(String message, bool clearBuffering) {
     _emit(_state.copyWith(
-        error: message, isBuffering: clearBuffering ? false : _state.isBuffering));
+        error: message,
+        isBuffering: clearBuffering ? false : _state.isBuffering));
   }
 
   void _ensureInitialized() {
