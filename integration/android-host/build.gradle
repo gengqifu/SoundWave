@@ -1,0 +1,30 @@
+// Minimal Android host to verify SoundWave core/adapter AARs without Flutter.
+buildscript {
+    repositories {
+        google()
+        mavenCentral()
+    }
+    dependencies {
+        classpath "com.android.tools.build:gradle:8.1.1"
+        classpath "org.jetbrains.kotlin:kotlin-gradle-plugin:1.9.23"
+    }
+}
+
+allprojects {
+    repositories {
+        google()
+        mavenCentral()
+        // Expose local AARs built under soundwave_player/android.
+        flatDir {
+            dirs(
+                "../soundwave_player/android/build/outputs/aar",
+                "../soundwave_player/android/core/build/outputs/aar",
+                "../soundwave_player/android/adapter/build/outputs/aar"
+            )
+        }
+    }
+}
+
+tasks.register("clean", Delete) {
+    delete(rootProject.buildDir)
+}
