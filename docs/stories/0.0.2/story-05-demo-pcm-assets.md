@@ -4,7 +4,7 @@
 - Demo 使用平台播放器解码（或适配层），将 `soundwave_player/example/assets/audio` 资产音频打包并推送 PCM 到 SDK，完成波形/频谱展示。
 
 ## 测试优先（TDD）
-- ✖️ [1] 资产打包测试：pubspec assets 声明后，构建产物包含示例音频并可播放。
+- ✅ [1] 资产打包测试：pubspec assets 声明后，构建产物包含示例音频并可播放。
 - ✖️ [2] 集成测试：播放资产/URL，PCM 推送后波形/频谱事件能在 Dart 层接收与绘制。
 - ✖️ [3] 控制流测试：play/pause/seek 后事件序号/时间戳连续且正确更新。
 
