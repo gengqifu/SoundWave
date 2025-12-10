@@ -13,9 +13,9 @@
 ## 开发任务
 - ✅ [6] 拆分独立原生 SDK 模块（Android）：核心实现独立于 Flutter 插件，插件仅作为壳层依赖 SDK，并迁移现有核心代码；拆分和迁移后不影响功能，现有测试全部通过。
 - ✅ [7] 拆分独立原生 SDK 模块（iOS）：核心实现独立于 Flutter 插件，插件仅作为壳层依赖 SDK，并迁移现有核心代码；拆分和迁移后不影响功能，现有测试全部通过。
-- ✖️ [8] Android 频域处理：在 core 集成 KissFFT，完成窗口化/FFT 计算，adapter 仅做 PCM 接入，桥接 spectrum 事件到 Flutter。
+- ✅ [8] Android 频域处理：在 core 集成 KissFFT，完成窗口化/FFT 计算，adapter 仅做 PCM 接入，桥接 spectrum 事件到 Flutter。
 - ✖️ [9] iOS 频域处理：在 core 集成 KissFFT（与 Android 统一），完成窗口化/FFT 计算，tap 层仅推送 PCM，桥接 spectrum 事件到 Flutter。
-- ✖️ [10] Android 构建：Gradle/CMake 配置输出 AAR，处理 ABI/符号、版本号、POM 元数据。
+- ✅ [10] Android 构建：Gradle/CMake 配置输出 AAR，处理 ABI/符号、版本号、POM 元数据。
 - ✖️ [11] iOS 构建：Xcode/CMake 生成 XCFramework（静态/动态选择），准备 SPM/Pod 集成说明。
 - ✖️ [12] 发布与文档：编写发布脚本与 README/接入说明，包含版本/依赖/示例。
 
