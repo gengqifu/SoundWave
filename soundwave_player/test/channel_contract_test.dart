@@ -177,6 +177,33 @@ void main() {
               ['subscribeWaveform', 'subscribeSpectrum', 'unsubscribeWaveform', 'unsubscribeSpectrum']));
     });
 
+    test('init default params stay backward compatible', () async {
+      final player = SoundwavePlayer();
+      await player
+          .init(const SoundwaveConfig(sampleRate: 44100, bufferSize: 1024, channels: 1));
+      expect(calls.single.method, 'init');
+      expect(
+          calls.single.arguments,
+          equals(<String, Object?>{
+            'sampleRate': 44100,
+            'bufferSize': 1024,
+            'channels': 1,
+          }));
+    });
+
+    test('load with relative or file url keeps optional args absent', () async {
+      final player = SoundwavePlayer();
+      await player
+          .init(const SoundwaveConfig(sampleRate: 48000, bufferSize: 2048, channels: 2));
+
+      await player.load('sample.mp3'); // relative path allowed
+      expect(calls.last.method, 'load');
+      expect(calls.last.arguments, equals(<String, Object?>{'source': 'sample.mp3'}));
+
+      await player.load('file:///tmp/a.wav');
+      expect(calls.last.arguments, equals(<String, Object?>{'source': 'file:///tmp/a.wav'}));
+    });
+
     test('subscribe/unsubscribe before init throws', () {
       final player = SoundwavePlayer();
       expect(() => player.subscribeWaveform(), throwsStateError);
