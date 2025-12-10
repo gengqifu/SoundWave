@@ -5,6 +5,7 @@ import AudioToolbox
 import CoreMedia
 import UIKit
 import Accelerate
+import SoundwaveCore
 
 public class SoundwavePlayerPlugin: NSObject, FlutterPlugin, FlutterStreamHandler {
   private var methodChannel: FlutterMethodChannel?
@@ -265,20 +266,13 @@ private class AudioTapProcessor {
   private var channelCount: UInt32 = 0
   private var bytesPerFrame: UInt32 = 0
   private var sampleRate: Double = 0
-  private var sequence: Int = 0
+  private var buffer = PcmFrameBuffer()
   // 使用全局串行队列，避免实例释放后队列被销毁导致异步访问野指针。
   private static let tapQueue = DispatchQueue(label: "soundwave.pcm.tap")
   private var timer: DispatchSourceTimer?
-  private var frames: [PcmFrame] = []
-  private var dropped: Int = 0
   private let maxFrames: Int = 60
   private let maxFramesPerTick: Int = 5
   private let tickMillis: Int = 33
-  private struct PcmFrame {
-    let sequence: Int
-    let timestampMs: Int64
-    let samples: [Double]
-  }
   private func log(_ msg: String) {
     print("Soundwave[iOS]: \(msg)")
   }
@@ -336,9 +330,7 @@ private class AudioTapProcessor {
     audioMix = nil
     stopTimer()
     AudioTapProcessor.tapQueue.sync {
-      frames.removeAll()
-      dropped = 0
-      sequence = 0
+      buffer.reset()
     }
   }
 
@@ -351,22 +343,15 @@ private class AudioTapProcessor {
 
     let samplesCount = Int(frames * CMItemCount(channelCount))
     let floatPtr = data.assumingMemoryBound(to: Float32.self)
-    var samples = [Double](repeating: 0, count: samplesCount)
+    var samples = [Float](repeating: 0, count: samplesCount)
     for i in 0..<samplesCount {
-      samples[i] = Double(floatPtr[i])
+      samples[i] = floatPtr[i]
     }
-
-    let ts = player?.currentPositionMs ?? 0
-    let seq = sequence
-    sequence += 1
 
     AudioTapProcessor.tapQueue.async { [weak self] in
       guard let self else { return }
-      if self.frames.count >= self.maxFrames {
-        self.frames.removeFirst()
-        self.dropped += 1
-      }
-      self.frames.append(PcmFrame(sequence: seq, timestampMs: ts, samples: samples))
+      let ts = self.player?.currentPositionMs ?? 0
+      self.buffer.push(samples: samples, timestampMs: ts)
     }
   }
 
@@ -374,7 +359,7 @@ private class AudioTapProcessor {
     channelCount = format.mChannelsPerFrame
     bytesPerFrame = format.mBytesPerFrame
     sampleRate = format.mSampleRate
-    sequence = 0
+    buffer.reset()
     startTimer()
   }
 
@@ -382,11 +367,9 @@ private class AudioTapProcessor {
     channelCount = 0
     bytesPerFrame = 0
     sampleRate = 0
-    sequence = 0
     stopTimer()
     AudioTapProcessor.tapQueue.sync {
-      frames.removeAll()
-      dropped = 0
+      buffer.reset()
     }
   }
 
@@ -420,17 +403,12 @@ private class AudioTapProcessor {
     let pcmSink = pcmSinkProvider()
     let spectrumSink = spectrumSinkProvider()
     if pcmSink == nil && spectrumSink == nil {
-      frames.removeAll()
-      dropped = 0
+      buffer.reset()
       return
     }
-    if frames.isEmpty && dropped == 0 { return }
-
-    let count = min(maxFramesPerTick, frames.count)
-    let batch = Array(frames.prefix(count))
-    frames.removeFirst(count)
-    let droppedBefore = dropped
-    dropped = 0
+    let batch = buffer.drain(maxFrames: maxFramesPerTick)
+    let droppedBefore = buffer.droppedSinceLastDrain()
+    if batch.isEmpty && droppedBefore == 0 { return }
 
     var pcmPayloads: [[String: Any]] = []
     var spectrumPayloads: [[String: Any]] = []
@@ -439,7 +417,7 @@ private class AudioTapProcessor {
       var pcmPayload: [String: Any] = [
         "sequence": frame.sequence,
         "timestampMs": frame.timestampMs,
-        "samples": frame.samples
+        "samples": frame.samples.map { Double($0) }
       ]
       if index == 0 && droppedBefore > 0 {
         pcmPayload["droppedBefore"] = droppedBefore

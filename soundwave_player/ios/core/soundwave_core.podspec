@@ -10,6 +10,7 @@ Core SDK for SoundWave native processing. This is a placeholder pending full PCM
   s.author           = { 'SoundWave' => 'dev@soundwave' }
   s.source           = { :path => '.' }
   s.source_files     = 'Sources/SoundwaveCore/**/*'
+  s.module_name      = 'SoundwaveCore'
   s.platform         = :ios, '12.0'
   s.swift_version    = '5.0'
 end
