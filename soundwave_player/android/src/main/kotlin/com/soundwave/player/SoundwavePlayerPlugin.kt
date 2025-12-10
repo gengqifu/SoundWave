@@ -24,6 +24,7 @@ import androidx.media3.exoplayer.hls.HlsMediaSource
 import androidx.media3.exoplayer.source.ProgressiveMediaSource
 import com.soundwave.adapter.PcmRenderersFactory
 import com.soundwave.adapter.PcmTapProcessor
+import com.soundwave.core.SpectrumEngine
 import io.flutter.embedding.engine.plugins.FlutterPlugin
 import io.flutter.plugin.common.EventChannel
 import io.flutter.plugin.common.MethodCall
@@ -52,6 +53,7 @@ class SoundwavePlayerPlugin : FlutterPlugin, MethodCallHandler {
   private var hasFocus: Boolean = false
   private var serviceStarted: Boolean = false
   private val pcmProcessor = PcmTapProcessor()
+  private val spectrumEngine = SpectrumEngine()
   private var sampleRate: Int = 48000
   private var pcmWorker: HandlerThread? = null
   private var pcmHandler: Handler? = null
@@ -445,7 +447,17 @@ class SoundwavePlayerPlugin : FlutterPlugin, MethodCallHandler {
               "droppedBefore" to dropped
             )
           )
-          // TODO: 接入原生 KissFFT 结果（当前占位，无 spectrum 推送）
+          spectrumEngine.compute(frame.samples, sampleRate)?.let { bins ->
+            spectrumPayloads.add(
+              mapOf(
+                "sequence" to frame.sequence,
+                "timestampMs" to ts,
+                "bins" to bins.toList(),
+                "binHz" to (sampleRate.toDouble() / spectrumEngine.windowSize.toDouble()),
+                "droppedBefore" to dropped
+              )
+            )
+          }
         }
       }
 
