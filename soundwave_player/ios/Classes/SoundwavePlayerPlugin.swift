@@ -267,12 +267,22 @@ private class AudioTapProcessor {
   private var bytesPerFrame: UInt32 = 0
   private var sampleRate: Double = 0
   private var buffer = PcmFrameBuffer()
+  private var spectrumFrames: [SpectrumFrame] = []
+  private let spectrumEngine = SpectrumEngine()
+  private var sequence: Int = 0
   // 使用全局串行队列，避免实例释放后队列被销毁导致异步访问野指针。
   private static let tapQueue = DispatchQueue(label: "soundwave.pcm.tap")
   private var timer: DispatchSourceTimer?
   private let maxFrames: Int = 60
   private let maxFramesPerTick: Int = 5
   private let tickMillis: Int = 33
+  private struct SpectrumFrame {
+    let sequence: Int
+    let timestampMs: Int64
+    let bins: [Float]
+    let binHz: Double
+  }
+
   private func log(_ msg: String) {
     print("Soundwave[iOS]: \(msg)")
   }
@@ -331,6 +341,7 @@ private class AudioTapProcessor {
     stopTimer()
     AudioTapProcessor.tapQueue.sync {
       buffer.reset()
+      spectrumFrames.removeAll()
     }
   }
 
@@ -351,7 +362,27 @@ private class AudioTapProcessor {
     AudioTapProcessor.tapQueue.async { [weak self] in
       guard let self else { return }
       let ts = self.player?.currentPositionMs ?? 0
-      self.buffer.push(samples: samples, timestampMs: ts)
+      let ch = max(Int(self.channelCount), 1)
+      let framesCount = samplesCount / ch
+      var mono = [Float](repeating: 0, count: framesCount)
+      for i in 0..<framesCount {
+        var sum: Float = 0
+        for c in 0..<ch {
+          let idx = i * ch + c
+          if idx < samples.count { sum += samples[idx] }
+        }
+        mono[i] = sum / Float(ch)
+      }
+      self.buffer.push(samples: mono, timestampMs: ts)
+      if let spec = self.spectrumEngine.compute(samples: mono, sampleRate: Int(self.sampleRate)) {
+        self.spectrumFrames.append(
+          SpectrumFrame(sequence: self.sequence, timestampMs: ts, bins: spec.bins, binHz: spec.binHz)
+        )
+      }
+      self.sequence &+= 1
+      if self.spectrumFrames.count > self.maxFrames {
+        self.spectrumFrames.removeFirst()
+      }
     }
   }
 
@@ -359,6 +390,8 @@ private class AudioTapProcessor {
     channelCount = format.mChannelsPerFrame
     bytesPerFrame = format.mBytesPerFrame
     sampleRate = format.mSampleRate
+    sequence = 0
+    spectrumFrames.removeAll()
     buffer.reset()
     startTimer()
   }
@@ -367,9 +400,11 @@ private class AudioTapProcessor {
     channelCount = 0
     bytesPerFrame = 0
     sampleRate = 0
+    sequence = 0
     stopTimer()
     AudioTapProcessor.tapQueue.sync {
       buffer.reset()
+      spectrumFrames.removeAll()
     }
   }
 
@@ -404,11 +439,17 @@ private class AudioTapProcessor {
     let spectrumSink = spectrumSinkProvider()
     if pcmSink == nil && spectrumSink == nil {
       buffer.reset()
+      spectrumFrames.removeAll()
       return
     }
     let batch = buffer.drain(maxFrames: maxFramesPerTick)
+    let spectrumBatchCount = min(maxFramesPerTick, spectrumFrames.count)
+    let spectrumBatch = spectrumBatchCount > 0 ? Array(spectrumFrames.prefix(spectrumBatchCount)) : []
+    if spectrumBatchCount > 0 {
+      spectrumFrames.removeFirst(spectrumBatchCount)
+    }
     let droppedBefore = buffer.droppedSinceLastDrain()
-    if batch.isEmpty && droppedBefore == 0 { return }
+    if batch.isEmpty && spectrumBatch.isEmpty && droppedBefore == 0 { return }
 
     var pcmPayloads: [[String: Any]] = []
     var spectrumPayloads: [[String: Any]] = []
@@ -423,8 +464,19 @@ private class AudioTapProcessor {
         pcmPayload["droppedBefore"] = droppedBefore
       }
       pcmPayloads.append(pcmPayload)
+    }
 
-      // TODO: 接入原生 KissFFT 结果（当前占位，无 spectrum 推送）。
+    for (index, frame) in spectrumBatch.enumerated() {
+      var spectrumPayload: [String: Any] = [
+        "sequence": frame.sequence,
+        "timestampMs": frame.timestampMs,
+        "bins": frame.bins.map { Double($0) },
+        "binHz": frame.binHz
+      ]
+      if index == 0 && droppedBefore > 0 {
+        spectrumPayload["droppedBefore"] = droppedBefore
+      }
+      spectrumPayloads.append(spectrumPayload)
     }
 
     let droppedPayload: [String: Any]? = {
