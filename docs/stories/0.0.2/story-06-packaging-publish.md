@@ -7,7 +7,7 @@
 - ✖️ [1] 构建测试：AAR/XCFramework 本地构建脚本执行成功，产物包含核心符号与所需资源。
 - ✖️ [2] 集成测试：新建最小宿主项目分别引用 AAR/XCFramework，验证 PCM push/波形/频谱事件通路。
 - ✖️ [3] 发布脚本检查：Maven/本地私有仓库推送、XCFramework 打包脚本可执行。
-- ✖️ [4] 频域测试（Android）：FFT 精度/性能、spectrum 事件桥接单测/集成测通过。
+- ✅ [4] 频域测试（Android）：FFT 精度/性能、spectrum 事件桥接单测/集成测通过。
 - ✖️ [5] 频域测试（iOS）：FFT 精度/性能、spectrum 事件桥接单测/集成测通过。
 
 ## 开发任务
