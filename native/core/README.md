@@ -9,6 +9,8 @@
 - 构建：`cmake -S . -B build -DSW_BUILD_TESTS=ON -DGTest_DIR=/usr/local/lib/cmake/GTest -DCMAKE_OSX_ARCHITECTURES=arm64`
 - 测试：`cmake --build build && ctest --test-dir build` 或单独运行 `ctest -R ring_buffer_tests|playback_thread_tests`。
 - 平台：开启 `POSITION_INDEPENDENT_CODE`，测试在非 ANDROID/IOS 下启用，gtest 未找到时跳过。
+- FFT 参数：PCM 多声道输入会 downmix 为 `(L+R+..)/channels` 后做窗口化；KissFFT 输出按窗口系数和信号幅度归一化，DC 分量约等于输入平均幅值，`binHz = sampleRate / windowSize`。
+- 性能烟测：`native/core/scripts/run_perf_smoke.sh [build_dir]` 自动配置/构建并运行 `FftSpectrumTest.PerformanceSmokeNoNanOrInf` 与跨端对齐用例，必要时传入 `CMAKE_FLAGS="-DGTest_DIR=..."`。
 
 后续工作（规划）：
 - 实现解码/缓冲/时钟、回调触发，支持 iOS/Android toolchain（现阶段由上层播放器提供解码，核心聚焦 PCM 处理）。

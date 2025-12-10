@@ -1,6 +1,7 @@
 #include "pcm_event_bus.h"
 
 #include <algorithm>
+#include <memory>
 
 namespace sw {
 
@@ -24,22 +25,28 @@ Status PcmEventBus::Push(const PcmInputFrame& frame, int64_t now_ms) {
 }
 
 void PcmEventBus::EmitSpectrumIfNeeded(const PcmFrame& frame) {
-  const int window = spectrum_cfg_.window_size > 0
-                         ? std::min(spectrum_cfg_.window_size, frame.num_frames)
-                         : frame.num_frames;
-  if (window <= 0 || frame.data == nullptr || frame.num_channels <= 0) return;
-  // 简化：占位谱（零），长度 = window/2+1。
-  const int num_bins = window / 2 + 1;
-  auto bins = std::make_shared<std::vector<float>>(static_cast<size_t>(num_bins), 0.0f);
+  SpectrumConfig cfg = spectrum_cfg_;
+  cfg.window_size =
+      cfg.window_size > 0 ? std::min(cfg.window_size, frame.num_frames) : frame.num_frames;
+  if (cfg.window_size <= 0 || frame.data == nullptr || frame.num_channels <= 0) return;
 
+  auto mono = DownmixToMono(frame.data, frame.num_frames, frame.num_channels, cfg.window_size);
+  cfg.window_size = static_cast<int>(mono.size());
+  if (mono.empty()) return;
+
+  auto spectrum = ComputeSpectrum(mono, frame.sample_rate, cfg);
+  if (spectrum.empty()) return;
+
+  auto bins = std::make_shared<std::vector<float>>(std::move(spectrum));
   SpectrumFrame spec;
   spec.bins = bins->data();
-  spec.num_bins = num_bins;
-  spec.window_size = window;
-  spec.bin_hz = frame.sample_rate > 0 ? static_cast<float>(frame.sample_rate) / window : 0.0f;
+  spec.num_bins = static_cast<int>(bins->size());
+  spec.window_size = cfg.window_size;
+  spec.bin_hz = frame.sample_rate > 0 ? static_cast<float>(frame.sample_rate) / cfg.window_size
+                                      : 0.0f;
   spec.sample_rate = frame.sample_rate;
-  spec.window = spectrum_cfg_.window;
-  spec.power_spectrum = spectrum_cfg_.power_spectrum;
+  spec.window = cfg.window;
+  spec.power_spectrum = cfg.power_spectrum;
   spec.timestamp_ms = frame.timestamp_ms;
   spectrum_cb_(spec);
 }

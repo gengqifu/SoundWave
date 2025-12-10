@@ -21,7 +21,7 @@ flowchart LR
 
 ## 3. 模块职责
 - PCM Ingress：接收上层 PCM 帧（float32，交错多声道，携带采样率/通道/时间戳/序号）；格式校验、帧长/采样率变化检测、节流与缓冲；Downmix `(L+R)/2`。
-- FFT Engine：KissFFT（唯一实现），窗口化（默认 Hann，预留 Hamming），nfft/hop 可配置；输出幅度谱归一化 0..1，附原始幅度、binHz、时间戳/序号。
+- FFT Engine：KissFFT（唯一实现，已移除 vDSP/Android FFT 依赖），窗口化（默认 Hann，预留 Hamming），nfft/hop 可配置；输出幅度谱归一化 0..1，附原始幅度、binHz、时间戳/序号。
 - Waveform Sampler：从 PCM 流按窗口抽稀输出波形帧，供 UI 绘制。
 - Error & Event：错误码/错误信息（输入异常、缓冲过载、FFT 失败）；波形/频谱事件带 meta（采样率、窗口、binHz、序号/时间戳）。
 - 可选播放适配层：封装 ExoPlayer/AVPlayer 提供 `load/play/pause/stop/seek` 便于 demo/快速集成，核心仍以 PCM 推送为准。

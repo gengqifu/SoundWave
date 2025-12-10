@@ -176,6 +176,46 @@ void main() {
           containsAll(
               ['subscribeWaveform', 'subscribeSpectrum', 'unsubscribeWaveform', 'unsubscribeSpectrum']));
     });
+
+    test('subscribe/unsubscribe before init throws', () {
+      final player = SoundwavePlayer();
+      expect(() => player.subscribeWaveform(), throwsStateError);
+      expect(() => player.subscribeSpectrum(), throwsStateError);
+      expect(() => player.unsubscribeWaveform(), throwsStateError);
+      expect(() => player.unsubscribeSpectrum(), throwsStateError);
+    });
+
+    test('push/subscribe/unsubscribe propagate platform errors', () async {
+      final player = SoundwavePlayer();
+      await player.init(const SoundwaveConfig(
+          sampleRate: 48000, bufferSize: 2048, channels: 2));
+      TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+          .setMockMethodCallHandler(channel, (MethodCall call) async {
+        if (call.method == 'pushPcmFrame') {
+          throw PlatformException(code: 'push_error', message: 'push fail');
+        }
+        if (call.method == 'subscribeWaveform') {
+          throw PlatformException(code: 'sub_error', message: 'sub fail');
+        }
+        if (call.method == 'unsubscribeSpectrum') {
+          throw PlatformException(code: 'unsub_error', message: 'unsub fail');
+        }
+        return null;
+      });
+
+      const frame = PcmInputFrame(
+          samples: <double>[0.1, -0.1, 0.2, -0.2],
+          sampleRate: 48000,
+          channels: 2,
+          timestampMs: 0,
+          sequence: 0);
+      expect(() => player.pushPcmFrame(frame),
+          throwsA(isA<SoundwaveException>().having((e) => e.code, 'code', 'push_error')));
+      expect(() => player.subscribeWaveform(),
+          throwsA(isA<SoundwaveException>().having((e) => e.code, 'code', 'sub_error')));
+      expect(() => player.unsubscribeSpectrum(),
+          throwsA(isA<SoundwaveException>().having((e) => e.code, 'code', 'unsub_error')));
+    });
   });
 
   group('SoundwavePlayer EventChannel contract', () {

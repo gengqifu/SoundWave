@@ -4,7 +4,7 @@
 - 扩展 Flutter 插件与平台桥接层，完整映射 PCM push/波形/频谱订阅、错误回调与可选播放器适配层 API，保持向后兼容。
 
 ## 测试优先（TDD）
-- ✖️ [1] MethodChannel 契约测试：push/subscribe/unsubscribe 调用参数校验与回调行为。
+- ✔️ [1] MethodChannel 契约测试：push/subscribe/unsubscribe 调用参数校验与回调行为。
 - ✖️ [2] 错误回调测试：模拟格式错误/缓冲过载/FFT 错误，Dart 层收到正确错误码文本。
 - ✖️ [3] 兼容性测试：旧接口（若有）不回归，新增接口默认参数合理。
 

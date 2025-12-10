@@ -10,9 +10,9 @@
 
 ## 开发任务
 - ✔️ [4] 集成 KissFFT 构建（CMake/Android/iOS），移除 Kotlin FFT 与 vDSP 调用路径。
-- ✖️ [5] 实现窗口化/归一化与 downmix，接入 PCM ingress 输出 Spectrum 事件。
-- ✖️ [6] 添加跨端对齐测试与性能烟测脚本，更新文档参数说明。
+- ✔️ [5] 实现窗口化/归一化与 downmix，接入 PCM ingress 输出 Spectrum 事件。
+- ✔️ [6] 添加跨端对齐测试与性能烟测脚本，更新文档参数说明。
 
 ## 完成标准（DoD）
-- ✖️ [7] 单测/对齐测试通过，FFT 输出与规格一致；性能烟测通过。
-- ✖️ [8] 文档/README/设计更新为 KissFFT 唯一路径，构建不再依赖 vDSP/Kotlin FFT。 
+- ✔️ [7] 单测/对齐测试通过，FFT 输出与规格一致；性能烟测通过。
+- ✔️ [8] 文档/README/设计更新为 KissFFT 唯一路径，构建不再依赖 vDSP/Kotlin FFT。 

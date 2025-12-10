@@ -146,10 +146,25 @@ class SoundwavePlayer {
     await _invoke<void>('pushPcmFrame', frame.toMap());
   }
 
-  Future<void> subscribeWaveform() => _invoke<void>('subscribeWaveform');
-  Future<void> subscribeSpectrum() => _invoke<void>('subscribeSpectrum');
-  Future<void> unsubscribeWaveform() => _invoke<void>('unsubscribeWaveform');
-  Future<void> unsubscribeSpectrum() => _invoke<void>('unsubscribeSpectrum');
+  Future<void> subscribeWaveform() {
+    _ensureInitialized();
+    return _invoke<void>('subscribeWaveform');
+  }
+
+  Future<void> subscribeSpectrum() {
+    _ensureInitialized();
+    return _invoke<void>('subscribeSpectrum');
+  }
+
+  Future<void> unsubscribeWaveform() {
+    _ensureInitialized();
+    return _invoke<void>('unsubscribeWaveform');
+  }
+
+  Future<void> unsubscribeSpectrum() {
+    _ensureInitialized();
+    return _invoke<void>('unsubscribeSpectrum');
+  }
 
   void _ensureInitialized() {
     if (!_initialized) {

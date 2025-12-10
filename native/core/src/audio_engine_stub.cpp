@@ -353,10 +353,10 @@ class AudioEngineStub : public AudioEngine {
         spec_cfg.window_size = samples_per_channel;
       }
 
-      std::vector<float> mono(static_cast<size_t>(spec_cfg.window_size));
-      for (int i = 0; i < spec_cfg.window_size; ++i) {
-        mono[static_cast<size_t>(i)] = frame.data[i * frame.num_channels];
-      }
+      auto mono =
+          DownmixToMono(frame.data, samples_per_channel, frame.num_channels, spec_cfg.window_size);
+      spec_cfg.window_size = static_cast<int>(mono.size());
+      if (mono.empty()) continue;
 
       auto spectrum = ComputeSpectrum(mono, frame.sample_rate, spec_cfg);
       if (spectrum.empty()) continue;

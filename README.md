@@ -4,7 +4,7 @@
 ## 功能
 - 播放本地/流式音频（ExoPlayer/AVPlayer），支持播放控制与前后台切换。
 - 实时波形渲染：PCM 分帧抽稀绘制，支持背景/颜色/线宽配置。
-- 实时频谱渲染：Hann 窗口 + FFT，支持对数频率轴（默认）或线性轴、幅度压缩。
+- 实时频谱渲染：KissFFT（跨 iOS/Android/C++ 唯一路径，已移除 vDSP/Kotlin FFT 依赖）+ Hann 窗口，支持对数频率轴（默认）或线性轴、幅度压缩。
 - 数据节流：PCM/频谱事件按 FPS 和批次推送，降低 Platform Channel 开销。
 
 ## 快速开始

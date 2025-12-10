@@ -6,6 +6,53 @@
 #include <limits>
 #include <vector>
 
+namespace {
+
+std::vector<float> ComputeSpectrumNaive(const std::vector<float>& samples,
+                                        const sw::SpectrumConfig& cfg) {
+  const int N = cfg.window_size;
+  if (N <= 0 || static_cast<int>(samples.size()) < N) return {};
+  std::vector<float> windowed(samples.begin(), samples.begin() + N);
+  float window_sum = 0.0f;
+  for (int n = 0; n < N; ++n) {
+    float w = 1.0f;
+    switch (cfg.window) {
+      case sw::WindowType::kHann:
+        w = 0.5f * (1.0f - std::cos(2.0f * static_cast<float>(M_PI) * n /
+                                    static_cast<float>(N - 1)));
+        break;
+      case sw::WindowType::kHamming:
+        w = 0.54f - 0.46f * std::cos(2.0f * static_cast<float>(M_PI) * n /
+                                     static_cast<float>(N - 1));
+        break;
+    }
+    windowed[static_cast<size_t>(n)] *= w;
+    window_sum += w;
+  }
+  if (window_sum <= 0.0f) return {};
+  const float inv_window_sum = 1.0f / window_sum;
+
+  std::vector<float> spectrum(static_cast<size_t>(N / 2 + 1), 0.0f);
+  for (int k = 0; k <= N / 2; ++k) {
+    double real = 0.0;
+    double imag = 0.0;
+    for (int n = 0; n < N; ++n) {
+      const double angle = -2.0 * M_PI * static_cast<double>(k) * static_cast<double>(n) /
+                           static_cast<double>(N);
+      const double v = static_cast<double>(windowed[static_cast<size_t>(n)]);
+      real += v * std::cos(angle);
+      imag += v * std::sin(angle);
+    }
+    const double mag2 = real * real + imag * imag;
+    spectrum[static_cast<size_t>(k)] =
+        cfg.power_spectrum ? static_cast<float>(mag2 * inv_window_sum * inv_window_sum)
+                           : static_cast<float>(std::sqrt(mag2) * inv_window_sum);
+  }
+  return spectrum;
+}
+
+}  // namespace
+
 namespace sw {
 
 TEST(FftSpectrumTest, SingleToneHasPeakAtExpectedBin) {
@@ -181,6 +228,28 @@ TEST(FftSpectrumTest, PerformanceSmokeNoNanOrInf) {
       EXPECT_FALSE(std::isnan(v));
       EXPECT_FALSE(std::isinf(v));
     }
+  }
+}
+
+TEST(FftSpectrumTest, CrossPlatformAlignmentMatchesNaiveReference) {
+  const int sample_rate = 16000;
+  SpectrumConfig cfg;
+  cfg.window_size = 16;
+  cfg.window = WindowType::kHann;
+  cfg.power_spectrum = false;
+
+  std::vector<float> samples(cfg.window_size);
+  for (int n = 0; n < cfg.window_size; ++n) {
+    const float t = static_cast<float>(n) / sample_rate;
+    samples[n] = 0.7f * std::sin(2.0f * static_cast<float>(M_PI) * 440.0f * t) +
+                 0.3f * std::sin(2.0f * static_cast<float>(M_PI) * 1000.0f * t);
+  }
+
+  const auto ref = ComputeSpectrumNaive(samples, cfg);
+  const auto sut = ComputeSpectrum(samples, sample_rate, cfg);
+  ASSERT_EQ(ref.size(), sut.size());
+  for (size_t i = 0; i < ref.size(); ++i) {
+    EXPECT_NEAR(ref[i], sut[i], 1e-4f) << "bin " << i;
   }
 }
 
