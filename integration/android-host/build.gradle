@@ -15,13 +15,16 @@ allprojects {
         google()
         mavenCentral()
         // Expose local AARs built under soundwave_player/android.
+        def repoRoot = file("$rootDir/../..") // -> SoundWave 仓库根
         flatDir {
             dirs(
-                "../soundwave_player/android/build/outputs/aar",
-                "../soundwave_player/android/core/build/outputs/aar",
-                "../soundwave_player/android/adapter/build/outputs/aar"
+                "${repoRoot}/soundwave_player/android/build/outputs/aar",
+                "${repoRoot}/soundwave_player/android/core/build/outputs/aar",
+                "${repoRoot}/soundwave_player/android/adapter/build/outputs/aar"
             )
         }
+        // 或使用本地 Maven 仓库（运行 scripts/publish_android_local.sh 后启用）：
+        // maven { url "${repoRoot}/build/maven-repo" }
     }
 }
 
