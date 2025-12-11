@@ -4,7 +4,7 @@
 - 确认仓库切换至 Apache 2.0 后的合规性，补全第三方 LICENSE/NOTICE 摘录（含 KissFFT/ExoPlayer/Apple 条款），并在 CI/检查脚本中固化。
 
 ## 测试优先（TDD）
-- ✖️ [1] License 扫描：脚本/CI 运行通过，无 GPL/FFmpeg 残留。
+- ✅ [1] License 扫描：脚本/CI 运行通过，无 GPL/FFmpeg 残留。
 - ✖️ [2] NOTICE/DEPENDENCIES 校验：包含所有第三方依赖条目，格式正确。
 
 ## 开发任务
