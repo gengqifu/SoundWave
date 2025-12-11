@@ -1,0 +1,21 @@
+name: HostApp
+options:
+  bundleIdPrefix: com.soundwave
+  deploymentTarget:
+    iOS: "12.0"
+targets:
+  HostApp:
+    platform: iOS
+    type: application
+    sources:
+      - path: Sources
+      - path: Resources
+        type: folder
+    settings:
+      base:
+        SWIFT_VERSION: 5.0
+        PRODUCT_BUNDLE_IDENTIFIER: com.soundwave.host
+    scheme:
+      gatherCoverageData: false
+    dependencies:
+      - framework: ../soundwave_player/build/ios_framework/Release/SoundwaveCore.xcframework
