@@ -9,9 +9,11 @@ import SwiftUI
 
 @main
 struct hostApp: App {
-    var body: some Scene {
-        WindowGroup {
-            ContentView()
-        }
+  @StateObject private var host = SpectrumHost(defaultFile: "sample.wav")
+
+  var body: some Scene {
+    WindowGroup {
+      ContentView(host: host)
     }
+  }
 }
