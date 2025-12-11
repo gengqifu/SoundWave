@@ -1,77 +1,138 @@
 import AVFoundation
 import SoundwaveCore
 
-/// 播放 bundle 音频并用 SoundwaveCore 计算一次频谱。
+/// 播放 bundle 音频，支持播放/暂停/停止/seek，实时输出波形与频谱。
 final class SpectrumHost: ObservableObject {
-  @Published private(set) var status: String = "Idle"
+  @Published var status: String = "Idle"
+  @Published var currentTime: TimeInterval = 0
+  @Published var duration: TimeInterval = 0
+  @Published var isPlaying: Bool = false
+  @Published var waveform: [Float] = []
+  @Published var spectrumData: [Float] = []
 
   private let engine = AVAudioEngine()
   private let player = AVAudioPlayerNode()
   private let spectrum = SpectrumEngine(windowSize: 1024, windowType: .hann, powerSpectrum: true)
+  private var audioFile: AVAudioFile?
   private var defaultFile: String
+  private var tapInstalled = false
+  private var timer: CADisplayLink?
+  private var currentFrame: AVAudioFramePosition = 0
 
   init(defaultFile: String) {
     self.defaultFile = defaultFile
     engine.attach(player)
     engine.connect(player, to: engine.mainMixerNode, format: nil)
     configureAudioSession()
+    installTapIfNeeded()
   }
 
-  func start(fileName: String? = nil) {
-    let targetFile = fileName ?? defaultFile
-    defaultFile = targetFile
-    status = "Loading \(targetFile)…"
+  func load(fileName: String) {
+    defaultFile = fileName
+    stop()
+    status = "Loading \(fileName)…"
     do {
-      // 停止上一段播放，重置连接。
-      player.stop()
-      engine.stop()
-
-      let url = try resolveURL(fileName: targetFile)
+      let url = try resolveURL(fileName: fileName)
       let file = try AVAudioFile(forReading: url)
-      let format = file.processingFormat
-      guard let buffer = AVAudioPCMBuffer(
-        pcmFormat: format,
-        frameCapacity: AVAudioFrameCount(file.length)
-      ) else {
-        status = "PCM buffer alloc failed"
-        return
-      }
-      try file.read(into: buffer)
-
-      // 重新连接节点，确保输出链路和通道数匹配。
-      engine.disconnectNodeOutput(player)
-      engine.connect(player, to: engine.mainMixerNode, format: buffer.format)
-      engine.disconnectNodeOutput(engine.mainMixerNode)
-      engine.connect(engine.mainMixerNode, to: engine.outputNode, format: nil)
-
-      try engine.start()
-      player.scheduleBuffer(buffer, at: nil, options: []) { [weak self] in
-        DispatchQueue.main.async {
-          self?.status = "Completed \(self?.defaultFile ?? "")"
-          self?.engine.stop()
-        }
-      }
-      player.play()
-
-      // 取一帧计算频谱，确认 xcframework 链路正常。
-      if let channelData = buffer.floatChannelData, buffer.frameLength > 0 {
-        let samples = Array(
-          UnsafeBufferPointer(start: channelData[0], count: Int(buffer.frameLength))
-        )
-        if let (bins, binHz) = spectrum.compute(samples: samples, sampleRate: Int(format.sampleRate)) {
-          let top3 = bins.prefix(3).map { String(format: "%.4f", $0) }.joined(separator: ", ")
-          status =
-            "Playing \(targetFile) @\(Int(format.sampleRate))Hz · binHz \(String(format: "%.2f", binHz)) · top3 \(top3)"
-          print("[Host] bins=\(bins.count) binHz=\(binHz) top3=\(top3)")
-        } else {
-          status = "Playing \(targetFile) @\(Int(format.sampleRate))Hz (spectrum empty)"
-        }
-      } else {
-        status = "Playing \(targetFile) (no samples)"
-      }
+      audioFile = file
+      duration = TimeInterval(file.length) / file.processingFormat.sampleRate
+      currentFrame = 0
+      currentTime = 0
+      waveform.removeAll()
+      spectrumData.removeAll()
+      status = "Ready: \(fileName)"
     } catch {
       status = "Failed: \(error.localizedDescription)"
     }
+  }
+
+  func play() {
+    guard let file = audioFile else {
+      load(fileName: defaultFile)
+      return play()
+    }
+    do {
+      if !engine.isRunning {
+        try engine.start()
+      }
+      schedule(from: currentFrame, file: file)
+      player.play()
+      isPlaying = true
+      status = "Playing \(defaultFile)"
+      startTimer()
+    } catch {
+      status = "Failed: \(error.localizedDescription)"
+    }
+  }
+
+  func pause() {
+    player.pause()
+    isPlaying = false
+    stopTimer()
+    status = "Paused"
+  }
+
+  func stop() {
+    player.stop()
+    engine.stop()
+    isPlaying = false
+    stopTimer()
+    currentFrame = 0
+    currentTime = 0
+    status = "Stopped"
+  }
+
+  func seek(progress: Double) {
+    guard let file = audioFile, duration > 0 else { return }
+    let target = max(0.0, min(progress, 1.0))
+    currentFrame = AVAudioFramePosition(Double(file.length) * target)
+    currentTime = TimeInterval(currentFrame) / file.processingFormat.sampleRate
+    if isPlaying {
+      player.stop()
+      schedule(from: currentFrame, file: file)
+      player.play()
+    }
+  }
+
+  private func schedule(from startFrame: AVAudioFramePosition, file: AVAudioFile) {
+    player.stop()
+    player.reset()
+    let total = file.length
+    guard startFrame < total else { return }
+    let framesToPlay = AVAudioFrameCount(total - startFrame)
+    engine.disconnectNodeOutput(player)
+    engine.connect(player, to: engine.mainMixerNode, format: file.processingFormat)
+    engine.disconnectNodeOutput(engine.mainMixerNode)
+    engine.connect(engine.mainMixerNode, to: engine.outputNode, format: nil)
+
+    player.scheduleSegment(
+      file,
+      startingFrame: startFrame,
+      frameCount: framesToPlay,
+      at: nil
+    ) { [weak self] in
+      DispatchQueue.main.async {
+        self?.isPlaying = false
+        self?.status = "Completed"
+        self?.stopTimer()
+      }
+    }
+  }
+
+  private func startTimer() {
+    stopTimer()
+    timer = CADisplayLink(target: self, selector: #selector(onTick))
+    timer?.add(to: .main, forMode: .common)
+  }
+
+  private func stopTimer() {
+    timer?.invalidate()
+    timer = nil
+  }
+
+  @objc private func onTick() {
+    guard let file = audioFile, isPlaying else { return }
+    currentTime = TimeInterval(currentFrame) / file.processingFormat.sampleRate
   }
 
   private func resolveURL(fileName: String) throws -> URL {
@@ -89,10 +150,38 @@ final class SpectrumHost: ObservableObject {
   }
 
   private func configureAudioSession() {
-    #if os(iOS)
-      let session = AVAudioSession.sharedInstance()
-      try? session.setCategory(.playback, mode: .default, options: [.mixWithOthers])
-      try? session.setActive(true, options: [])
-    #endif
+    let session = AVAudioSession.sharedInstance()
+    try? session.setCategory(.playback, mode: .default, options: [.mixWithOthers])
+    try? session.setActive(true, options: [])
+  }
+
+  private func installTapIfNeeded() {
+    guard !tapInstalled else { return }
+    tapInstalled = true
+    engine.mainMixerNode.installTap(onBus: 0, bufferSize: 1024, format: nil) {
+      [weak self] buffer, _ in
+      guard let self = self else { return }
+      guard let channel = buffer.floatChannelData?.pointee else { return }
+      let count = Int(buffer.frameLength)
+      let samples = Array(UnsafeBufferPointer(start: channel, count: count))
+      DispatchQueue.main.async {
+        self.appendWaveform(samples)
+        self.updateSpectrum(samples, sampleRate: Int(buffer.format.sampleRate))
+        self.currentFrame += AVAudioFramePosition(count)
+      }
+    }
+  }
+
+  private func appendWaveform(_ samples: [Float]) {
+    waveform.append(contentsOf: samples)
+    if waveform.count > 2048 {
+      waveform.removeFirst(waveform.count - 2048)
+    }
+  }
+
+  private func updateSpectrum(_ samples: [Float], sampleRate: Int) {
+    if let (bins, _) = spectrum.compute(samples: samples, sampleRate: sampleRate) {
+      spectrumData = Array(bins.prefix(256))
+    }
   }
 }
