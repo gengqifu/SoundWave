@@ -1,6 +1,6 @@
 ## iOS Host (纯原生示例思路)
 
-- 产物：`soundwave_player/build/ios_framework/Release/SoundwaveCore.xcframework`（无 Flutter 依赖）。
+- 产物：`soundwave_player/ios/core/build/SoundwaveCore.xcframework`（纯原生，无 Flutter）。
 - 资源：`Resources/` 下已拷贝 `soundwave_player/example/assets/audio/` 里的测试音频（wav/mp3）。
 - 示例代码：`Sources/SpectrumHost.swift` 展示如何用 `AVAudioEngine` 播放 bundle 音频并调用 `SoundwaveCore.SpectrumEngine` 计算频谱，可通过 `fileName` 切换播放文件（默认 `sample.wav`）。
 
@@ -14,8 +14,8 @@ open HostApp.xcodeproj
 如未安装 XcodeGen：`brew install xcodegen`。
 
 工程说明：
-- Target: `HostApp`（SwiftUI，最低 iOS 12）
-- 依赖：`../soundwave_player/build/ios_framework/Release/SoundwaveCore.xcframework`
+- Target: `HostApp`（SwiftUI，最低 iOS 14）
+- 依赖：`../../soundwave_player/ios/core/build/SoundwaveCore.xcframework`
 - 资源：`Resources/` 下音频自动打包
 - 代码：`Sources/AppMain.swift`、`ContentView.swift`、`SpectrumHost.swift`
 

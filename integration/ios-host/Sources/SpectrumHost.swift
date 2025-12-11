@@ -39,9 +39,10 @@ final class SpectrumHost {
     // 拉取前 1 帧做频谱演示（单声道/双声道均取 channel 0）
     if let channelData = buffer.floatChannelData, buffer.frameLength > 0 {
       let samples = Array(UnsafeBufferPointer(start: channelData[0], count: Int(buffer.frameLength)))
-      if let spec = spectrum.compute(samples: samples, sampleRate: Int(format.sampleRate)) {
-        let top3 = spec.prefix(3).map { String(format: "%.4f", $0) }.joined(separator: ", ")
-        print("bins=\(spec.count) top3=\(top3)")
+      if let result = spectrum.compute(samples: samples, sampleRate: Int(format.sampleRate)) {
+        let (bins, binHz) = result
+        let top3 = bins.prefix(3).map { String(format: "%.4f", $0) }.joined(separator: ", ")
+        print("bins=\(bins.count) binHz=\(binHz) top3=\(top3)")
       }
     }
   }
