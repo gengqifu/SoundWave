@@ -11,7 +11,7 @@
 ## 开发任务
 - ✅ [4] 补充/更新集成测试脚本与自动化（Flutter integration_test 或宿主脚本）。
 - ✅ [5] 前后台与控制流回归用例，验证事件连续性。
-- ✖️ [6] 长稳播放与性能采集（CPU/内存/帧率），记录基线并文档化。
+- ✅ [6] 长稳播放与性能采集（CPU/内存/帧率），记录基线并文档化。 @docs/tests/longrun_performance.md / perf_baseline_template.md
 
 ## 完成标准（DoD）
 - ✖️ [7] 集成/前后台/控制流测试通过，事件无漂移。
