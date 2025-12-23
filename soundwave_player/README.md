@@ -1,99 +1,111 @@
 # soundwave_player
 
-SoundWave Flutter 插件，用于桥接移动端音频播放/可视化能力（时域波形、频谱）。当前支持本地播放可视化（Story09/11），流式播放待 Story10 恢复。
+SoundWave Flutter 插件，桥接移动端音频播放与实时可视化（时域波形、频谱）。当前聚焦本地播放可视化（Story09/11），流式播放/弱网策略待 Story10 恢复。
 
-## 安装
+## 适用场景与现状
+- 适用：Flutter 应用需要播放本地或流式音频，并在 UI 中显示波形/频谱；或宿主自行解码 PCM 后推送给插件做可视化。
+- 现状：本地播放可视化可用；流式播放/弱网/后台 Service 尚未实现；错误码与节流参数已定义，接口稳定性在演进。
 
+## 环境要求
+- Flutter >= 3.13（稳定版），Dart 与之匹配。
+- iOS：Xcode 15+，部署目标 12+。需执行 `pod install`，如需后台播放需开启 Background Modes (Audio)。
+- Android：compileSdk 34、minSdk 21，使用 AndroidX / Media3；建议安装 NDK r26 以匹配示例/CI 环境。
+
+## 安装与集成
+在你的工程 `pubspec.yaml` 中添加依赖（可改为 path 依赖）：
 ```yaml
 dependencies:
   soundwave_player:
     git: https://github.com/gengqifu/SoundWave.git
+    # 或
+    # path: ../soundwave_player
 ```
+然后执行：
+```bash
+flutter pub get
+```
+iOS：进入 `ios/` 执行 `pod install`，接受 Xcode 许可。  
+Android：确保使用 AndroidX，若播放 http 流需在 `AndroidManifest.xml` 配置 `usesCleartextTraffic="true"` 或 network security config。
 
-## 快速开始（本地播放）
+## 运行示例
+```bash
+cd soundwave_player/example
+flutter pub get
+flutter run  # 真机或模拟器
+```
+示例页面可点击 “Use bundled sample.mp3” → `Init` → `Load` → `Play` 体验波形/频谱；也可选择内置测试音频（正弦/方波/噪声/扫频等）。
 
+## 快速开始（Flutter）
+使用内置 `AudioController` 聚合状态与流：
 ```dart
 import 'package:soundwave_player/soundwave_player.dart';
 
-final player = SoundwavePlayer();
+final controller = AudioController();
 
-Future<void> init() async {
-  await player.init(const SoundwaveConfig(sampleRate: 48000, bufferSize: 2048, channels: 2));
-  await player.load('file:///tmp/sample.mp3');
-  await player.play();
-}
-
-void listen() {
-  player.stateEvents.listen((event) {
-    // 处理播放/缓冲/错误事件
-  });
-  player.pcmEvents.listen((pcm) {
-    // 处理可视化 PCM 帧
-  });
-  player.spectrumEvents.listen((spectrum) {
-    // 处理频谱数据
-  });
-}
-
-/// 上层自行解码 PCM 时，可推送到 SDK 并订阅波形/频谱：
-Future<void> pushPcm() async {
-  await player.init(const SoundwaveConfig(sampleRate: 48000, bufferSize: 2048, channels: 2));
-  // 解码得到交错 PCM（示例仅用占位数据）
-  const frame = PcmInputFrame(
-    samples: <double>[0.1, -0.1, 0.2, -0.2],
+Future<void> setup() async {
+  await controller.init(const SoundwaveConfig(
     sampleRate: 48000,
+    bufferSize: 2048,
     channels: 2,
-    timestampMs: 0,
-    sequence: 1,
-  );
-  await player.pushPcmFrame(frame);
-  await player.subscribeWaveform();
-  await player.subscribeSpectrum();
+    pcmMaxFps: 30,      // 可选：波形事件节流
+    spectrumMaxFps: 30, // 可选：频谱事件节流
+  ));
+  await controller.load('file:///tmp/sample.mp3'); // 支持 file/http/https
+  controller.states.listen((s) => debugPrint('state=$s'));
+  controller.pcmBuffer.listen((f) => debugPrint('pcm seq=${f.sequence}'));
+  controller.spectrumBuffer.listen((f) => debugPrint('spectrum bins=${f.bins.length}'));
+  await controller.play();
+}
+
+@override
+void dispose() {
+  controller.dispose();
+  super.dispose();
 }
 ```
+- UI 侧可直接使用 `WaveformStreamView` / `SpectrumStreamView` 绑定对应流。
+- 若你自行解码 PCM，可调用 `SoundwavePlayer.pushPcmFrame` 推送交错 PCM 分帧，然后订阅波形/频谱事件。
 
-### 约束与注意
-- 初始化只允许一次；未 init 的调用会抛 `StateError`。
-- 参数校验：空 source、负 `seek`、非正 sampleRate/bufferSize/channels 会抛 `ArgumentError`。
-- 错误事件：原生错误码会映射为友好提示（如 network_error/invalid_format/buffer_overflow/fft_error/playback_error/timeout）；`SoundwaveException` 的 `message` 已包含映射结果。
-- 流式播放/弱网策略尚未实现（Story10 暂缓），当前聚焦本地播放。
+## API 速览
+- 初始化：`init(SoundwaveConfig config)`（必填：`sampleRate`、`bufferSize`、`channels`；可选节流：`pcmMaxFps`、`pcmFramesPerPush`、`pcmMaxPending`、`spectrumMaxFps`、`spectrumMaxPending`；网络：`connectTimeoutMs`、`readTimeoutMs`、`enableRangeRequests`；播放：`ringBufferMs`；调试：`enableSkiaTracing`）。数值需 >0（pending 可为 0），不合法抛 `ArgumentError`。
+- 控制：`load(source, {headers, rangeStart, rangeEnd})`、`play()`、`pause()`、`stop()`、`seek(Duration)`。source 支持 `file://` / `http(s)://` / 相对路径（视平台而定），range 需满足 `start<=end`。
+- 事件流：
+  - `states` → `AudioState{position,duration,bufferedPosition?,isPlaying,isBuffering,levels?,spectrum?,error?}`。
+  - `pcmBuffer` → `PcmFrame{sequence,timestampMs,samples}`（交错 float）。
+  - `spectrumBuffer` → `SpectrumFrame{sequence,timestampMs,bins,binHz}`。
+- 订阅控制：`subscribeWaveform` / `unsubscribeWaveform`、`subscribeSpectrum` / `unsubscribeSpectrum` 控制后台推送。
+- 错误码映射（`SoundwaveException.code`）：`invalid_format`、`buffer_overflow`、`fft_error`、`network_error`、`playback_error`、`timeout`，message 提供中文提示。
+- 约束：未 `init` 调用会抛 `StateError`；`seek` 不能为负；`pushPcmFrame` 需提供非空 samples，长度可被 channels 整除。
 
-### 可视化样式
+## 数据流与线程模型
+- Flutter 调用 MethodChannel (`soundwave_player`) 发送控制命令，EventChannel (`state`/`pcm`/`spectrum`) 接收事件。
+- 平台侧使用 ExoPlayer/AVPlayer 解码（或上层自解码），PCM 进入 C/C++ 核心做节流/FFT，下发波形/频谱事件供 Dart 绘制。
+- UI 绘制在 Flutter 侧，核心尽量在平台线程/后台线程完成，减少 UI 卡顿；波形/频谱事件可通过节流参数控制频率。
+
+## 可视化样式
 ```dart
 const SpectrumStyle(
   barColor: Colors.cyan,
   background: Colors.black,
   barWidth: 2,
   spacing: 1,
-  logScale: true,      // 幅度对数压缩，防止峰值淹没细节
-  freqLogScale: true,  // 频率轴对数分布，低频更宽
+  logScale: true,     // 幅度对数压缩
+  freqLogScale: true, // 频率轴对数分布
 );
 ```
-- 低频占比过大时，可将 `freqLogScale` 设为 `false` 变为线性频率轴，或调小 `logScale` 影响。
+- 低频占比过大可将 `freqLogScale` 设为 false；如存在峰值淹没，可调整 `logScale` 或增大 `barWidth`/`spacing` 以减负载。
 
-## 手工验证可视化（建议流程）
-1) 使用内置 assets（`example/assets/audio`）或自备单声道 48 kHz 测试音频：正弦 1 kHz、方波/锯齿、白噪声/粉噪、20–20k 线性扫频、静音。  
-2) 在示例页输入本地路径或使用“Use bundled …”/手动选择文件 → `Init` → `Load` → `Play`。  
-3) 观察 Waveform：正弦平滑、方波平顶、噪声随机无溢出、扫频振幅/频率随时间变。  
-4) 观察 Spectrum：正弦单峰；方波/锯齿多谐波递减；白噪声谱趋近平坦、粉噪高频衰减；扫频主峰随时间从低频平滑移动到高频；静音无显著能量。  
-5) 如谱偏左/右，可切换 `SpectrumStyle(freqLogScale: false)` 看线性频率轴；多声道源若下混，谱为平均。  
-6) 更严格可录屏/截屏，与离线工具（如 Python/scipy 绘制的谱）对比峰值位置和形状，容忍窗函数带来的主瓣宽度与旁瓣。
+## 常见问题与排障
+- iOS `pod install` 失败：更新 CocoaPods 源（`pod repo update`），确认 Xcode 许可已接受；真机需配置签名。
+- Android 播放 http 失败：Manifest 开启 `usesCleartextTraffic` 或改用 https；确保使用 AndroidX。
+- 无波形/频谱：确认已调用 `subscribeWaveform`/`subscribeSpectrum`，且源音频有内容；检查节流参数是否过低。
+- 性能不足：降低 `pcmMaxFps`/`spectrumMaxFps` 或增大 `pcmFramesPerPush`；UI 端减少每帧绘制量。
 
-## 开发
+## 开发与测试
+- 格式化：`dart format lib test example/lib`
+- 静态检查：`flutter analyze`
+- 单测：`flutter test`
 
-- 格式化：`HOME=/your/writable/home dart format lib test example/lib`
-- 静态检查：`HOME=/your/writable/home flutter analyze`
-- 单元测试：`HOME=/your/writable/home flutter test`
-
-## Demo
-
-- 验收清单：见 `docs/demo_acceptance.md`（本地播放、波形/频谱刷新、前后台切换）。
-- 自动化冒烟占位：`example/integration_test/demo_smoke_test.dart`（待 UI 实现后补充）。
-
-## 平台配置（前后台/后台播放）
-
-- iOS：宿主 App 需在 Xcode 中开启 Background Modes（Audio），`Info.plist` 增加 `UIBackgroundModes = audio`。插件已配置 `AVAudioSessionCategoryPlayback` 并监听中断/路由变更，后台播放权限需由宿主工程启用。
-- iOS 隐私：`ios/Resources/PrivacyInfo.xcprivacy` 已声明音频数据访问及必要 API 访问（时间戳、UserDefaults），如有自定义用途请补充。
-- Android：目前未启用通知栏/前台 Service，如需后台播放请在宿主应用添加前台 Service 与通知渠道，并配置 `android.permission.FOREGROUND_SERVICE`/`INTERNET`。
-
-> 使用本仓库的建议 HOME（避免 lockfile 权限问题）：`/Users/gengqifu/git/ext/SoundWave/.home`
+## 手工验收要点
+- 使用示例内置音频：正弦峰值单峰，方波/锯齿谐波递减，白噪谱平坦、粉噪高频衰减，扫频主峰平滑移动，静音无显著能量。
+- 前后台切换后播放/可视化应保持；错误码应映射为中文提示。
